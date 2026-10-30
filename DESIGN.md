@@ -2,6 +2,10 @@
 name: Waypoint
 description: Native Android navigation with distinct game-inspired atlases.
 colors:
+  launcher-map-ink: "#131915"
+  launcher-route-lime: "#D5F16C"
+  launcher-arrow-ivory: "#F3F5E8"
+  launcher-compass-muted: "#77866F"
   library-ink: "#151815"
   library-cream: "#F1F2E8"
   library-muted: "#AFB5A7"
@@ -87,6 +91,9 @@ spacing:
   atlas-edge: "18dp"
   generous: "24dp"
 components:
+  adaptive-launcher-icon:
+    backgroundColor: "{colors.launcher-map-ink}"
+    size: "108dp"
   atlas-tool:
     backgroundColor: "{colors.default-panel}"
     textColor: "{colors.default-foreground}"
@@ -157,6 +164,7 @@ Each atlas has a four-role HUD palette: panel, foreground, accent and muted text
 
 ### Primary
 
+- **Launcher route lime and arrow ivory** form the original two-facet navigation mark and bent route. These identity colors are scoped to the full-color launcher icon.
 - **Default navigation green** marks shared navigation actions and selected states in the neutral dark family.
 - **Western cream and scarlet** pair quiet paper controls with a red route.
 - **Night cyan and yellow** distinguish technical labels from guidance over the red-building city map.
@@ -169,6 +177,7 @@ Each atlas has a four-role HUD palette: panel, foreground, accent and muted text
 
 ### Neutral
 
+- **Launcher map ink and muted compass** support the arrow with a subdued abstract map and open brackets. Android supplies the colors for themed-icon rendering from the monochrome layer.
 - **Library ink, cream and muted** support search, settings, saved places and the theme catalogue.
 - **Default and western panels** give text a nearly opaque local backing over changing geography.
 - **Daylight panel and ink** reverse the contrast for Nudle-style controls. Horizon also uses a light panel with dark text.
@@ -242,13 +251,17 @@ Theme borders are usually 1dp. Pixel frames are heavier. Gold corner ornament ap
 
 ## Components
 
+### Adaptive launcher icon
+
+The launcher mark is an original faceted navigation arrow, bent route with an origin dot, and two open compass brackets. The abstract map sits in a separate background layer. Foreground and monochrome vectors use a 108dp canvas and a centered 0.88 scale to keep the mark inside the adaptive-icon safe area. Android owns the final mask. The full-color arrow uses the launcher ivory and lime; the monochrome layer preserves the arrow, route and brackets as one tintable silhouette, omitting the map texture and facet colors. Material You themed colors are supplied by supported Android launchers. This identity component does not replace a world’s HUD, map palette or position marker.
+
 ### Atlas controls
 
 `AtlasTool` uses an icon plate and visible caption as one semantic button, with native click feedback, the selected shape and paired foreground/panel colors. The light variant reverses the icon plate colors while the caption retains the theme panel and foreground. `AtlasAction` provides a labelled action; its active state also reverses the pair. `AtlasFind` is a search launcher with a search icon, label and trailing chevron, not an editable field. Its default visible label is Search places, at 16sp/21sp in the world HUD face, with up to two lines.
 
 ### Search and transport
 
-The Worlds picker and destination search use native outlined text fields. The picker says “Find a game” and lists only the 27 game variants. Car, Motorcycle and Walk are real routing selections rendered as three equal-width radio choices, each with an icon, label and active underline. Their row has a minimum 52dp height. Keyboard, Back and scrolling behavior stay native. The synthetic map swatch is a preview illustration; the welcome card labels it “Style preview.” It is not proof of the actual geographic view or full HUD composition.
+The Worlds picker and destination search use native outlined text fields. Destination search retains the library background and Material text, with the selected world’s field/button shape and place-icon accent. The “Place or address” field supports the keyboard Search action; a visible “Search places” button is enabled after two trimmed characters. Submission hides the keyboard. Result rows allow two name lines and three address lines, with ellipsis and a separate provider label; distance appears when a location fix exists. A Plus-Code-only Android response is labelled “Address result for …” with “Android geocoder · address match,” keeping an address candidate distinct from a verified named place. The picker says “Find a game” and lists only the 27 game variants. Car, Motorcycle and Walk are real routing selections rendered as three equal-width radio choices, each with an icon, label and active underline. Their row has a minimum 52dp height. Keyboard, Back and scrolling behavior stay native. The synthetic map swatch is a preview illustration; the welcome card labels it “Style preview.” It is not proof of the actual geographic view or full HUD composition.
 
 ### Tabs and panels
 

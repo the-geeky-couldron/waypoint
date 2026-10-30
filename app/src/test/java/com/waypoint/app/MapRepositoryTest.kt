@@ -18,20 +18,20 @@ class MapRepositoryTest {
     @Before fun setup(){server=MockWebServer();server.start();repository=MapRepository(server.url("/").toString(),server.url("/").toString(),server.url("/").toString())}
     @After fun close(){server.shutdown()}
     private fun response(body:String,code:Int=200){server.enqueue(MockResponse().setResponseCode(code).setBody(body).addHeader("Content-Type","application/json"))}
-    private val feature="""{"properties":{"osm_type":"N","osm_id":1,"name":"River Cafe","street":"Strand Road","city":"Town"},"geometry":{"type":"Point","coordinates":[88.3,22.8]}}"""
+    private val feature="""{"properties":{"osm_type":"N","osm_id":1,"name":"River Cafe","street":"Example Road","city":"Town"},"geometry":{"type":"Point","coordinates":[-0.12,51.5]}}"""
     private val route="""{"code":"Ok","routes":[{"distance":111.0,"duration":60.0,"geometry":{"coordinates":[[0.0,0.0],[0.001,0.0]]},"legs":[{"steps":[{"name":"Main Street","distance":111.0,"duration":60.0,"maneuver":{"type":"depart","location":[0.0,0.0]}},{"name":"","distance":0.0,"duration":0.0,"maneuver":{"type":"arrive","location":[0.001,0.0]}}]}]}]}"""
     @Test fun searchEncodesQueryAndKeepsCoordinateOrder()=runBlocking {
         response("""{"features":[$feature]}""")
-        val places=repository.search("Cafe & Park",Coordinate(22.9,88.4))
-        assertEquals(Coordinate(22.8,88.3),places.single().point)
+        val places=repository.search("Cafe & Park",Coordinate(51.5,-0.12))
+        assertEquals(Coordinate(51.5,-0.12),places.single().point)
         val request=server.takeRequest().requestUrl!!
-        assertEquals("Cafe & Park",request.queryParameter("q"));assertEquals("22.9",request.queryParameter("lat"));assertEquals("88.4",request.queryParameter("lon"))
+        assertEquals("Cafe & Park",request.queryParameter("q"));assertEquals("51.5",request.queryParameter("lat"));assertEquals("-0.12",request.queryParameter("lon"))
     }
     @Test fun duplicateSearchResultsAreRemoved()=runBlocking {
         response("""{"features":[$feature,$feature]}""");assertEquals(1,repository.search("Cafe",Coordinate(0.0,0.0)).size)
     }
     @Test fun namelessSearchUsesStreet()=runBlocking {
-        response("""{"features":[${feature.replace("River Cafe","")}]}""");assertEquals("Strand Road",repository.search("Strand",Coordinate(0.0,0.0)).single().name)
+        response("""{"features":[${feature.replace("River Cafe","")}]}""");assertEquals("Example Road",repository.search("Example",Coordinate(0.0,0.0)).single().name)
     }
     @Test fun reverseEmptyResponseHasUsefulFallback()=runBlocking {
         response("""{"features":[]}""");assertEquals("Your location",repository.reverse(Coordinate(0.0,0.0)))
@@ -93,7 +93,7 @@ class MapRepositoryTest {
         assertTrue(runCatching { repository.route(Coordinate(0.0,0.0),Coordinate(0.0,0.001)) }.exceptionOrNull()?.message?.contains("too short or too complex")==true)
     }
     @Test fun rejectsInvalidProviderCoordinates()=runBlocking {
-        response("{\"features\":[${feature.replace("88.3,22.8","88.3,122.8")}]}")
+        response("{\"features\":[${feature.replace("-0.12,51.5","-0.12,122.8")}]}")
         assertTrue(runCatching { repository.search("Park",Coordinate(0.0,0.0)) }.isFailure)
     }
     @Test fun rejectsNegativeRouteDuration()=runBlocking {

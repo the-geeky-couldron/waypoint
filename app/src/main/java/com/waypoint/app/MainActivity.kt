@@ -15,6 +15,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -216,7 +220,7 @@ fun WaypointApp(controller: NavigationController,state: NavState,destinationLaun
                         if(welcomeVisible) WelcomeScreen(state.world,{landing=false},{tab=1},{settings=true})
                         if(tab==1) WorldsScreen(state.world,{controller.changeWorld(it);tab=0},{tab=0})
                         if(tab==2 && !state.navigating) SavedScreen(state,::choose,{controller.toggleSaved(it)},{search=true})
-                        if(search) SearchScreen(state,controller::search,::choose,{search=false},controller::changeMode)
+                        if(search) SearchScreen(state,controller::search,::choose,{search=false},controller::changeMode,controller::submitSearch)
                     }
                 }
             }
@@ -311,16 +315,22 @@ fun maneuverIcon(step: Maneuver?): ImageVector = when { step==null->Icons.Defaul
     }
 }
 
-@Composable fun SearchScreen(state: NavState,onQuery:(String)->Unit,onSelect:(Place)->Unit,onBack:()->Unit,onMode:(TravelMode)->Unit) {
+@Composable fun SearchScreen(state: NavState,onQuery:(String)->Unit,onSelect:(Place)->Unit,onBack:()->Unit,onMode:(TravelMode)->Unit,onSubmit:()->Unit={onQuery(state.query)}) {
+    val keyboard=LocalSoftwareKeyboardController.current
+    fun submit(){keyboard?.hide();onSubmit()}
     Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().imePadding()) {
         Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically) {
             IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back to map")}
-            OutlinedTextField(value=state.query,onValueChange=onQuery,label={Text("Place or address")},singleLine=true,modifier=Modifier.weight(1f),shape=hudShape(state.world),trailingIcon={if(state.query.isNotEmpty())IconButton(onClick={onQuery("")}){Icon(Icons.Default.Close,"Clear search")}})
+            OutlinedTextField(value=state.query,onValueChange={onQuery(it.take(256))},label={Text("Place or address")},singleLine=true,keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=KeyboardActions(onSearch={submit()}),modifier=Modifier.weight(1f),shape=hudShape(state.world),trailingIcon={if(state.query.isNotEmpty())IconButton(onClick={onQuery("")}){Icon(Icons.Default.Close,"Clear search")}})
+        }
+        Button(onClick={submit()},enabled=state.query.trim().length>=2,shape=hudShape(state.world),modifier=Modifier.fillMaxWidth().padding(horizontal=24.dp)) {
+            Icon(Icons.Default.Search,null,Modifier.size(20.dp));Spacer(Modifier.width(8.dp));Text("Search places")
         }
         Box(Modifier.padding(horizontal=16.dp)){TransportModes(state.mode,onMode,state.world)}
         Text(if(state.fix==null)"Search worldwide · preview near Los Angeles" else "Search near your location",style=MaterialTheme.typography.bodySmall,color=Muted,modifier=Modifier.padding(horizontal=24.dp,vertical=12.dp))
+        if(state.searchNote!=null)Text(state.searchNote,style=MaterialTheme.typography.bodySmall,color=Muted,modifier=Modifier.padding(horizontal=24.dp,vertical=8.dp))
         if(state.searching) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal=24.dp))
-        if(state.searchError!=null) { Notice(state.searchError,Icons.Default.CloudOff);TextButton(onClick={onQuery(state.query)}){Text("Retry search")} }
+        if(state.searchError!=null) { Notice(state.searchError,Icons.Default.CloudOff);TextButton(onClick={submit()}){Text("Retry search")} }
         LazyColumn {
             if(state.query.length<2) {
                 item { Text(if(state.recent.isEmpty())"Your next destination starts here." else "Recent destinations",style=MaterialTheme.typography.titleMedium,modifier=Modifier.padding(24.dp)) }
@@ -328,13 +338,13 @@ fun maneuverIcon(step: Maneuver?): ImageVector = when { step==null->Icons.Defaul
                 if(state.recent.isEmpty()) item { Text("Find an address, a landmark, or your next coffee stop. You can also press and hold the map to drop a pin.",color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(horizontal=24.dp)) }
             } else {
                 items(state.searchResults,key={it.id}){PlaceRow(it,state,onSelect)}
-                if(!state.searching && state.searchResults.isEmpty() && state.searchError==null) item{Text("No places found. Try a street, city, or fuller address.",modifier=Modifier.padding(24.dp),color=Muted)}
+                if(!state.searching && state.searchResults.isEmpty() && state.searchError==null && state.searchNote==null) item{Text("No places found. Try a street, city, or fuller address.",modifier=Modifier.padding(24.dp),color=Muted)}
             }
         }
     }
 }
 @Composable fun PlaceRow(place: Place,state: NavState,onSelect:(Place)->Unit) {
-    ListItem(headlineContent={Text(place.name,maxLines=2,overflow=TextOverflow.Ellipsis)},supportingContent={Text(place.address,maxLines=2,overflow=TextOverflow.Ellipsis)},leadingContent={Icon(Icons.Default.Place,null,tint=state.world.accent)},trailingContent={state.fix?.let{Text(formatDistance(distance(it,place.point),state.imperial),style=MaterialTheme.typography.labelSmall,color=Muted)}},modifier=Modifier.clickable{onSelect(place)},colors=ListItemDefaults.colors(containerColor=Ink))
+    ListItem(headlineContent={Text(place.name,maxLines=2,overflow=TextOverflow.Ellipsis)},supportingContent={Column { Text(place.address,maxLines=3,overflow=TextOverflow.Ellipsis);if(place.source.isNotEmpty())Text(place.source,style=MaterialTheme.typography.labelSmall,color=Muted) }},leadingContent={Icon(Icons.Default.Place,null,tint=state.world.accent)},trailingContent={state.fix?.let{Text(formatDistance(distance(it,place.point),state.imperial),style=MaterialTheme.typography.labelSmall,color=Muted)}},modifier=Modifier.clickable{onSelect(place)},colors=ListItemDefaults.colors(containerColor=Ink))
 }
 @Composable fun SavedScreen(state: NavState,onSelect:(Place)->Unit,onDelete:(Place)->Unit,onSearch:()->Unit) {
     Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().padding(top=24.dp)) {

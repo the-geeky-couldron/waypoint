@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-30T13:20:00.988022+00:00",
+  "generatedAt": "2026-10-30T16:48:34.166225+00:00",
   "title": "Design System: Waypoint",
   "extensions": {
     "platform": "android",
@@ -18,7 +18,13 @@
       "app/src/main/java/com/waypoint/app/MainActivity.kt",
       "app/src/main/java/com/waypoint/app/MapGlyphs.kt",
       "docs/map-fonts.md",
-      "app/src/main/java/com/waypoint/app/NavigationController.kt"
+      "app/src/main/java/com/waypoint/app/NavigationController.kt",
+      "app/src/main/res/drawable/ic_launcher_background.xml",
+      "app/src/main/res/drawable/ic_launcher_foreground.xml",
+      "app/src/main/res/drawable/ic_launcher_monochrome.xml",
+      "app/src/main/res/mipmap-anydpi/ic_launcher.xml",
+      "app/src/main/java/com/waypoint/app/PlaceSearch.kt",
+      "app/src/main/java/com/waypoint/app/AndroidPlaceSearch.kt"
     ],
     "colorMeta": {
       "library-ink": {
@@ -272,6 +278,62 @@
           "oklch(84% 0.0232 224.90)",
           "oklch(95% 0.0232 224.90)"
         ]
+      },
+      "launcher-map-ink": {
+        "role": "neutral",
+        "displayName": "Launcher Map Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0120 156.02)",
+          "oklch(26% 0.0120 156.02)",
+          "oklch(38% 0.0120 156.02)",
+          "oklch(49% 0.0120 156.02)",
+          "oklch(61% 0.0120 156.02)",
+          "oklch(72% 0.0120 156.02)",
+          "oklch(84% 0.0120 156.02)",
+          "oklch(95% 0.0120 156.02)"
+        ]
+      },
+      "launcher-route-lime": {
+        "role": "primary",
+        "displayName": "Launcher Route Lime",
+        "tonalRamp": [
+          "oklch(15% 0.1614 119.65)",
+          "oklch(26% 0.1614 119.65)",
+          "oklch(38% 0.1614 119.65)",
+          "oklch(49% 0.1614 119.65)",
+          "oklch(61% 0.1614 119.65)",
+          "oklch(72% 0.1614 119.65)",
+          "oklch(84% 0.1614 119.65)",
+          "oklch(95% 0.1614 119.65)"
+        ]
+      },
+      "launcher-arrow-ivory": {
+        "role": "secondary",
+        "displayName": "Launcher Arrow Ivory",
+        "tonalRamp": [
+          "oklch(15% 0.0173 113.82)",
+          "oklch(26% 0.0173 113.82)",
+          "oklch(38% 0.0173 113.82)",
+          "oklch(49% 0.0173 113.82)",
+          "oklch(61% 0.0173 113.82)",
+          "oklch(72% 0.0173 113.82)",
+          "oklch(84% 0.0173 113.82)",
+          "oklch(95% 0.0173 113.82)"
+        ]
+      },
+      "launcher-compass-muted": {
+        "role": "neutral",
+        "displayName": "Launcher Compass Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0383 134.67)",
+          "oklch(26% 0.0383 134.67)",
+          "oklch(38% 0.0383 134.67)",
+          "oklch(49% 0.0383 134.67)",
+          "oklch(61% 0.0383 134.67)",
+          "oklch(72% 0.0383 134.67)",
+          "oklch(84% 0.0383 134.67)",
+          "oklch(95% 0.0383 134.67)"
+        ]
       }
     },
     "tonalRampNote": "Synthesized OKLCH inspection ramps preserve the source hue/chroma. They are not additional app tokens; the native palettes use only the code-defined colors.",
@@ -386,7 +448,9 @@
       "routeFooterActions": "End trip and Steps are 64dp wide with minimum 64dp height and 2dp content padding. Roboto Condensed captions use 12sp/16sp, zero tracking, a single line and no soft wrapping.",
       "routePreviewViewport": "onGloballyPositioned measures map, header and destination-panel bounds in root pixels. MapViewportInsets derives the unobscured viewport with 28dp breathing room and system-inset handling: the middle between panels in portrait, or below the left toolbar beside the panel in compact landscape. Fitted bounds include route points, actual GPS origin and selected destination. Overview bearing and tilt are explicitly zero: north-up and flat, independent of the idle world camera. Fitting waits for usable measured insets and reruns when measured layout/insets or style change; there is no fixed pixel-padding assumption. This is a code description, not device validation.",
       "compactDestination": "Normal portrait: 16dp padding, 12dp gaps, Material titleLarge, up to two address lines. Compact height: 12dp padding, 8dp gaps, titleMedium, one address line; destination names permit two lines in both. Compact preview uses a horizontal Locate action with minimum 48dp height instead of the vertical icon/caption control.",
-      "destinationSaveAction": "Save/Saved is 64dp wide with minimum 56dp height and 2dp content padding. Roboto Condensed caption: 12sp/16sp, zero tracking, one line, no soft wrapping."
+      "destinationSaveAction": "Save/Saved is 64dp wide with minimum 56dp height and 2dp content padding. Roboto Condensed caption: 12sp/16sp, zero tracking, one line, no soft wrapping.",
+      "adaptiveLauncherIcon": "Original arrow, bent route and open compass brackets; 108dp vector layers with the mark scaled 0.88 around (54,54). Android owns masking and themed monochrome tint. Full-color map texture belongs only to the background layer. This launcher identity does not replace game palettes.",
+      "destinationSearch": "Native Place or address field with keyboard Search and visible Search places button, enabled at two trimmed characters. Submission hides the keyboard. Selected-world shape and place accent are retained. Rows show a two-line place name, three-line address, separate provider attribution and optional distance. Plus-Code-only Android responses explicitly say Address result for … and Android geocoder · address match."
     }
   },
   "components": [
@@ -469,6 +533,14 @@
       "description": "Typography excerpt for the launcher and picker. The map-style name is uniformly 22sp/28sp; the game name is 12sp/17sp. This neutral example uses the actual Los Santos naming without pretending to be a live map.",
       "html": "<button class=\"ds-world\"><span class=\"ds-style-name\">LOS SANTOS</span><span class=\"ds-game-name\">Grand Theft Auto V</span></button>",
       "css": ".ds-world{display:flex;flex-direction:column;gap:5px;width:300px;padding:16px;background:#191b1bf2;color:#f5f5f0;border:0;text-align:left;cursor:pointer}.ds-style-name{font:700 22px/28px \"Barlow Condensed\",sans-serif;font-stretch:condensed}.ds-game-name{font:12px/17px sans-serif;color:#c0c5bf}.ds-world:hover{background:#252824}.ds-world:focus-visible{outline:2px solid #b6db91;outline-offset:2px}.ds-world:active{filter:brightness(.85)}"
+    },
+    {
+      "name": "Adaptive launcher icon",
+      "kind": "custom",
+      "refersTo": "adaptive-launcher-icon",
+      "description": "Original full-color vector layers. This portable square layer preview copies the Android paths; the launcher owns masking. Native normal and wallpaper-tinted light/dark evidence is recorded in the scoped surface brief.",
+      "html": "<svg class=\"ds-launcher-icon\" viewBox=\"0 0 108 108\" role=\"img\" aria-label=\"Waypoint navigation icon\"><path d=\"M0,0H108V108H0Z\" fill=\"#131915\"/><path d=\"M15,17H33V32H15Z M39,17H58V27H39Z M65,17H87V34H65Z M15,39H30V55H15Z M35,39H48V49H35Z M77,41H96V57H77Z M15,64H29V83H15Z M37,76H53V94H37Z M61,80H83V94H61Z M81,64H96V75H81Z\" fill=\"#202B23\"/><path d=\"M0,35H56L83,61H108 M33,0V62L59,88V108 M0,60H32 M61,0V32 M80,64V108 M0,87H33\" fill=\"none\" stroke=\"#354438\" stroke-width=\"1.8\"/><g transform=\"translate(54 54) scale(0.88 0.88) translate(-54 -54)\"><path d=\"M27,42V31Q27,27 31,27H43 M65,81H77Q81,81 81,77V65\" fill=\"none\" stroke=\"#77866F\" stroke-width=\"2.2\" stroke-linecap=\"round\"/><path d=\"M29,77H42V64L52,54\" fill=\"none\" stroke=\"#D5F16C\" stroke-width=\"4.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M29,73A4,4 0,1 0,29 81A4,4 0,1 0,29 73\" fill=\"#D5F16C\"/><path d=\"M76,31L64,71L54,56L39,46Z\" fill=\"#0B100C\" stroke=\"#0B100C\" stroke-width=\"7\" stroke-linejoin=\"round\"/><path d=\"M76,31L54,56L39,46Z\" fill=\"#F3F5E8\"/><path d=\"M76,31L64,71L54,56Z\" fill=\"#D5F16C\"/></g></svg>",
+      "css": ".ds-launcher-icon{display:block;width:108px;height:108px}"
     }
   ],
   "narrative": {

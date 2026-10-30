@@ -24,7 +24,9 @@ Sensor-assisted real-time navigation: fused GNSS/network positioning, gyroscope/
 
 ## Brand Commitments
 
-Actual game HUD samples recorded in docs/visual-sourcebook.md refine the visual direction. Six supplied screenshots establish full-screen themed maps, bold game-inspired typography, high-contrast place symbols and visible route lines. Twenty-seven game-inspired themes adapt researched cartographic/HUD rules using original graphics, without copying game assets. Working app name: Waypoint.
+Actual game HUD samples recorded in docs/visual-sourcebook.md refine the visual direction. Six supplied screenshots establish full-screen themed maps, bold game-inspired typography, high-contrast place symbols and visible route lines. Twenty-seven game-inspired themes adapt researched cartographic/HUD rules using original graphics, without copying game assets. Working app name: Waypoint. The launcher identity is an original bold navigation arrow, bent route and open compass brackets over an abstract dark map. The supplied dark-map icon is inspiration rather than an asset to reproduce. Android adaptive layers include a monochrome mark for Material You themed icons on supported launchers; the in-app game palettes remain independent.
+
+Public promotional artwork uses original compositions, the original Waypoint icon, licensed fonts and actual native app captures. Repository documentation, release notes and examples use fixed public demonstration locations or fictional fixtures. Personal queries, routes, device details, home/work locations and private captures must not enter public materials. The README's London demonstration posters extend the established identity; their composition and typography scale remain scoped to that surface in `.impeccable/readme-promo.md`.
 
 ## Product Principles
 
@@ -40,3 +42,5 @@ The launch surface is a native animated welcome screen with Open map and world s
 The release extension adds manual update checks and downloads in Settings. Stable GitHub release APKs must pass checksum, package, version and signing-identity checks before Android's installer opens. Installation is user-confirmed and disabled during navigation. The prepared token-free update channel requires public GitHub Releases. Public documentation screenshots use explicit demonstration coordinates, never the user's GPS position.
 
 Android Auto is disabled and non-exported in the hardened 0.2.1 build pending isolated cross-UID and lifecycle validation. Phone transport modes remain available. Shared links cannot replace active guidance. See docs/security.md.
+
+Destination search keeps the native game-styled surface and supports both the visible Search places button and the keyboard Search action. Photon results can be supplemented by the device Android geocoder and confirmed spelling aliases; provider coverage determines which names are available. Results retain the provider name, address and coordinates, with provider attribution and an explicit “Address result for …” label when Android returns only a Plus Code. An address match does not confirm a named landmark.

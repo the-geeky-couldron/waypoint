@@ -231,8 +231,8 @@ fun World.inspiration()=when(this) {
             Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)) {
                 Icon(maneuverIcon(step),null,Modifier.size(44.dp),tint=p.accent)
                 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
-                    Text(if(state.routing)"Rerouting…" else formatDistance(state.progress?.toTurn ?: 0.0,state.imperial),fontFamily=hudFont(state.world),fontWeight=FontWeight.Bold,fontSize=34.sp,lineHeight=39.sp,color=p.accent)
-                    Text(step?.instruction ?: "Finding your route",fontSize=16.sp,lineHeight=22.sp,maxLines=3,overflow=TextOverflow.Ellipsis)
+                    Text(when { !state.gpsReady -> "Finding GPS"; state.routing -> "Rerouting…"; state.offRoute -> "Off route"; else -> formatDistance(state.progress?.toTurn ?: 0.0,state.imperial) },fontFamily=hudFont(state.world),fontWeight=FontWeight.Bold,fontSize=34.sp,lineHeight=39.sp,color=p.accent)
+                    Text(when { !state.gpsReady -> "Waiting for a fresh, accurate location"; state.routing -> "Updating the route from your position"; state.offRoute -> if(state.routeError!=null)"Route unavailable · retrying automatically" else "Checking your position for a new route"; else -> step?.instruction ?: "Finding your route" },fontSize=16.sp,lineHeight=22.sp,maxLines=3,overflow=TextOverflow.Ellipsis)
                 }
                 Icon(Icons.Default.ExpandMore,"Show route steps",Modifier.size(20.dp),tint=p.muted)
             }

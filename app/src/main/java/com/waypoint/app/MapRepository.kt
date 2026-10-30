@@ -18,13 +18,19 @@ import kotlinx.coroutines.sync.withLock
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
-class MapRepository(private val photonBase:String="https://photon.komoot.io", private val routingBase:String="https://router.project-osrm.org", private val valhallaBase:String="https://valhalla1.openstreetmap.de") {
+interface NavigationRepository {
+    suspend fun search(query: String, near: Coordinate): List<Place>
+    suspend fun reverse(point: Coordinate): String
+    suspend fun route(from: Coordinate, to: Coordinate, mode: TravelMode = TravelMode.CAR): RoadRoute
+}
+
+class MapRepository(private val photonBase:String="https://photon.komoot.io", private val routingBase:String="https://router.project-osrm.org", private val valhallaBase:String="https://valhalla1.openstreetmap.de") : NavigationRepository {
     private val routeMutex=Mutex()
     private var lastRouteCall=0L
     private val client = OkHttpClient.Builder().connectTimeout(12,TimeUnit.SECONDS).readTimeout(20,TimeUnit.SECONDS).callTimeout(25,TimeUnit.SECONDS)
         .followRedirects(false).followSslRedirects(false).build()
     private suspend fun json(url: String, maxBytes: Int = 2 * 1024 * 1024): JSONObject = suspendCancellableCoroutine { continuation ->
-        val call = client.newCall(Request.Builder().url(url).header("User-Agent","WaypointAndroid (navigation)").build())
+        val call = client.newCall(Request.Builder().url(url).header("User-Agent","WaypointAndroid/${BuildConfig.VERSION_NAME} (https://github.com/the-geeky-couldron/waypoint)").build())
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -65,24 +71,24 @@ class MapRepository(private val photonBase:String="https://photon.komoot.io", pr
     private fun number(value: Double, maximum: Double): Double = value.also {
         require(it.isFinite() && it >= 0 && it <= maximum) { "The route contains invalid distances or times. Try again." }
     }
-    suspend fun search(query: String, near: Coordinate): List<Place> = withContext(Dispatchers.IO) {
+    override suspend fun search(query: String, near: Coordinate): List<Place> = withContext(Dispatchers.IO) {
         require(query.length <= 256) { "Use a shorter place name or address (up to 256 characters)." }
         require(near.isValid()) { "Waiting for a valid location." }
-        val features = json("${photonBase.trimEnd('/')}/api/?q=${URLEncoder.encode(query,"UTF-8")}&lat=${near.lat}&lon=${near.lon}&limit=8&lang=en").getJSONArray("features")
+        val features = json("${photonBase.trimEnd('/')}/api/?q=${URLEncoder.encode(query,"UTF-8")}&lat=${near.lat}&lon=${near.lon}&limit=8&lang=en&zoom=12&location_bias_scale=0.2").getJSONArray("features")
         require(features.length() <= 8) { "The search response has too many places. Try again." }
         (0 until features.length()).map { i ->
             val f = features.getJSONObject(i); val p = f.getJSONObject("properties"); val c = f.getJSONObject("geometry").getJSONArray("coordinates")
-            Place("${text(p.optString("osm_type"),8)}${p.optLong("osm_id")}",text(p.optString("name").ifBlank { p.optString("street","Dropped pin") }),
-                listOf(p.optString("housenumber"),p.optString("street"),p.optString("city"),p.optString("country")).map{ text(it,120) }.filter{it.isNotBlank()}.distinct().joinToString(", "),
-                c.point(),text(p.optString("osm_value","place"),60))
+            Place(if(p.has("osm_id"))"${text(p.optString("osm_type"),8)}${p.optLong("osm_id")}" else "photon:${c.getDouble(1)},${c.getDouble(0)}:${text(p.optString("name"))}",text(p.optString("name").ifBlank { p.optString("street","Dropped pin") }),
+                listOf(p.optString("housenumber"),p.optString("street"),p.optString("district"),p.optString("city"),p.optString("county"),p.optString("country")).map{ text(it,120) }.filter{it.isNotBlank()}.distinct().joinToString(", "),
+                c.point(),text(p.optString("osm_value","place"),60),"OpenStreetMap · Photon")
         }.distinctBy { it.id }
     }
-    suspend fun reverse(point: Coordinate): String = withContext(Dispatchers.IO) {
+    override suspend fun reverse(point: Coordinate): String = withContext(Dispatchers.IO) {
         require(point.isValid()) { "Waiting for a valid location." }
         val p = json("${photonBase.trimEnd('/')}/reverse?lat=${point.lat}&lon=${point.lon}&limit=1&lang=en").getJSONArray("features").optJSONObject(0)?.optJSONObject("properties")
         text(p?.optString("city")?.ifBlank { p.optString("county") }?.ifBlank { "Your location" } ?: "Your location")
     }
-    suspend fun route(from: Coordinate, to: Coordinate,mode:TravelMode=TravelMode.CAR): RoadRoute = withContext(Dispatchers.IO) {
+    override suspend fun route(from: Coordinate, to: Coordinate,mode:TravelMode): RoadRoute = withContext(Dispatchers.IO) {
         require(from.isValid() && to.isValid()) { "Choose a destination with valid coordinates." }
         val obj = if(mode==TravelMode.CAR) json("${routingBase.trimEnd('/')}/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=full&geometries=geojson&steps=true",8*1024*1024)
         else routeMutex.withLock {

@@ -21,7 +21,7 @@ distance, speed, spoken instructions, off-route recalculation, and arrival.
 - **Saved:** bookmark a destination; navigate to it again later.
 - **Settings:** voice, metric/imperial, 2D/3D, updates, permissions,
   and clearing saved places/history.
-- Dragging the map pauses camera following. Tap the location button to recenter.
+- The map follows live GPS while browsing until you pan or select a destination. During navigation, a pan pauses following for eight seconds, then it resumes automatically. Tap Locate to recenter immediately. The location pointer stays centred during position animation.
 - Navigation continues through a location foreground service when the screen is
   off. Stop it in the app or from its ongoing Android notification.
 - Standard `geo:` and `google.navigation:` destination links are supported.
@@ -61,7 +61,7 @@ No private signing material is included in the source.
 
 - Map tiles/glyphs/sprites: [OpenFreeMap](https://openfreemap.org/), derived from
   [OpenStreetMap](https://www.openstreetmap.org/copyright).
-- Search and reverse geocoding: [Photon public demo](https://github.com/komoot/photon).
+- Search and reverse geocoding: [Photon public demo](https://github.com/komoot/photon). Search also uses [Android Geocoder](https://developer.android.com/reference/android/location/Geocoder) when available and Photon lacks a strong match, or when you explicitly submit a search. The device selects that backend; its data is not necessarily open source.
 - Driving routes and steps: [OSRM public demo](https://project-osrm.org/).
 - Voice: Android's installed text-to-speech engine.
 
@@ -72,6 +72,12 @@ Routes do not include live traffic, closures, speed-limit enforcement,
 lane guidance, or offline routing. GPS accuracy and map coverage vary. ETA is
 estimated from route progress. Road testing is still required. The app is a working
 prototype, not a claim of complete feature parity or production navigation quality.
+
+## Search matching
+
+Search accepts typos, accent differences and joined place names, and ranks matches from saved/recent places alongside provider results. Press **Search places** or the keyboard Search key for a broader device-geocoder lookup. Search results retain the returned name, full address and actual provider coordinates. Optional confirmed spelling aliases are read from private device preferences; no user-specific place aliases are bundled in the public app. Android sometimes returns an address code instead of a landmark label; these results explicitly say **Address result for …** and retain the complete provider address. Confirm the address before starting.
+
+No provider indexes every business, informal place name or entrance. Google Maps maintains a different places database. Neither an open-source wrapper nor this fallback guarantees identical coverage. Nominatim and Overpass were investigated but not added as autocomplete backends: the former forbids client-side autocomplete on its public endpoint, and the latter advises apps to operate their own backend.
 
 ## Sensor-assisted navigation
 
@@ -89,10 +95,10 @@ No background-location permission, account, analytics or app-owned server exists
 The optional fused-location dependency uses Google Play services and its device
 location settings. Native GNSS/network fallback supports devices without it.
 
-Map providers receive the tiles requested. Photon receives search terms and location
+Map providers receive the tiles requested. Photon and, when used, the Android geocoder backend receive search terms and location
 bias; OSRM or Valhalla receives route origin/destination coordinates and the selected routing profile. Saved/recent places and
 settings remain in device preferences, excluded from cloud backup/device transfer.
-You can clear those places in Settings. Location history is not recorded.
+You can clear those places in Settings. Location history is not recorded. The small search-result cache lives only in memory and is bounded to 40 queries. Confirmed spelling aliases change the search text; they never supply invented destination coordinates.
 
 ## Architecture
 

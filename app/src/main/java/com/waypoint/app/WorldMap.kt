@@ -1,6 +1,8 @@
 package com.waypoint.app
 
 import android.animation.ValueAnimator
+import android.os.SystemClock
+import kotlinx.coroutines.delay
 import android.view.animation.LinearInterpolator
 import android.graphics.BitmapFactory
 import android.graphics.Bitmap
@@ -42,18 +44,21 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleReady by remember { mutableIntStateOf(0) }
     var loadedWorld by remember { mutableStateOf<World?>(null) }
-    var following by remember { mutableStateOf(true) }
+    val followPolicy=remember{MapFollowPolicy()}
+    var followTick by remember { mutableIntStateOf(0) }
     var cameraFix by remember { mutableStateOf<Coordinate?>(null) }
     var cameraBearing by remember { mutableFloatStateOf(0f) }
     val renderedBearing=remember{floatArrayOf(0f)}
     val pointerAnimator=remember{arrayOfNulls<ValueAnimator>(1)}
+    val positionAnimator=remember{arrayOfNulls<ValueAnimator>(1)}
+    val renderedPosition=remember{arrayOfNulls<Coordinate>(1)}
     val styleEpoch=remember{intArrayOf(0)}
     val renderLifecycle=remember(mapView){MapRenderLifecycle(mapView)}
     DisposableEffect(mapView,owner) {
         val observer=LifecycleEventObserver { _,_ -> renderLifecycle.update(owner.lifecycle.currentState,currentActive) }
         owner.lifecycle.addObserver(observer)
         renderLifecycle.update(owner.lifecycle.currentState,currentActive)
-        onDispose {styleEpoch[0]++;pointerAnimator[0]?.cancel();owner.lifecycle.removeObserver(observer);renderLifecycle.destroy()}
+        onDispose {styleEpoch[0]++;positionAnimator[0]?.cancel();pointerAnimator[0]?.cancel();owner.lifecycle.removeObserver(observer);renderLifecycle.destroy()}
     }
     LaunchedEffect(active) {renderLifecycle.update(owner.lifecycle.currentState,active)}
     AndroidView(factory={mapView.apply {
@@ -65,7 +70,10 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
             }
             m.cameraPosition=CameraPosition.Builder().target(PreviewCenter.latLng()).zoom(15.2).tilt(35.0).bearing(-22.0).build()
             m.addOnCameraMoveListener { currentBearing(m.cameraPosition.bearing.toFloat()) }
-            m.addOnCameraMoveStartedListener { reason -> if(reason==MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) following=false }
+            m.addOnCameraMoveStartedListener { reason -> if(reason==MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
+                followPolicy.gestureStarted(SystemClock.elapsedRealtime());followTick++
+            } }
+            m.addOnCameraIdleListener { if(followPolicy.gestureEnded(SystemClock.elapsedRealtime()))followTick++ }
             m.addOnMapLongClickListener { point ->
                 if(!currentState.navigating) currentPin(Place("pin:${point.latitude},${point.longitude}","Dropped pin","%.5f, %.5f".format(point.latitude,point.longitude),Coordinate(point.latitude,point.longitude)))
                 true
@@ -85,7 +93,7 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
         val m=map ?: return@LaunchedEffect
         if(!active || styleReady>0 && loadedWorld==state.world)return@LaunchedEffect
         // Cancel synchronously before setStyle destroys native layer handles.
-        styleEpoch[0]++;pointerAnimator[0]?.cancel();pointerAnimator[0]=null
+        styleEpoch[0]++;positionAnimator[0]?.cancel();pointerAnimator[0]?.cancel();pointerAnimator[0]=null
         styleReady=0; currentError(null)
         val requestedWorld=state.world
         val requestedEpoch=styleEpoch[0]
@@ -120,19 +128,19 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
             loadedWorld=requestedWorld;styleReady=requestedEpoch
         }
     }
-    LaunchedEffect(active,styleReady,state.mode,state.navigating) {
+    LaunchedEffect(active,styleReady,state.mode,state.navigating,state.offRoute,state.routing) {
         if(!active || styleReady==0)return@LaunchedEffect
         val style=map?.style ?: return@LaunchedEffect
         // Retail Cyberpunk walking radar uses yellow dotted guidance; driving is solid.
         val dotted=(state.world==World.NIGHT_CITY && state.mode==TravelMode.WALK) || (state.world==World.SAINTS && state.navigating)
         val routeColor=if(state.world==World.SAINTS && state.navigating)"#86D955" else state.world.routeColor
-        style.getLayerAs<LineLayer>("route-line")?.setProperties(lineColor(routeColor),lineDasharray(if(dotted)arrayOf(.3f,1.8f) else arrayOf(1f,0f)))
+        style.getLayerAs<LineLayer>("route-line")?.setProperties(lineColor(routeColor),lineOpacity(if(state.offRoute || state.routing && state.navigating).45f else 1f),lineDasharray(if(dotted)arrayOf(.3f,1.8f) else arrayOf(1f,0f)))
         style.getLayerAs<LineLayer>("route-casing")?.setProperties(lineOpacity(if(dotted)0f else 1f))
     }
-    LaunchedEffect(active,styleReady,state.route,state.selected) {
+    LaunchedEffect(active,styleReady,state.route,state.selected,state.navigating,state.progress?.traveled) {
         if(!active || styleReady==0) return@LaunchedEffect
         val style=map?.style ?: return@LaunchedEffect
-        style.getSourceAs<GeoJsonSource>("route")?.setFeature(state.route?.let{Feature.fromGeometry(LineString.fromLngLats(it.points.map{p->Point.fromLngLat(p.lon,p.lat)}))})
+        style.getSourceAs<GeoJsonSource>("route")?.setFeature(state.route?.let{Feature.fromGeometry(LineString.fromLngLats((if(state.navigating)it.remainingPoints(state.progress) else it.points).map{p->Point.fromLngLat(p.lon,p.lat)}))})
         style.getSourceAs<GeoJsonSource>("destination")?.setFeature(state.selected?.let{Feature.fromGeometry(Point.fromLngLat(it.point.lon,it.point.lat))})
     }
     LaunchedEffect(active,styleReady,state.bearing,state.headingReliable) {
@@ -151,24 +159,64 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
         }
     }
     LaunchedEffect(active,styleReady,state.fix,state.accuracy) {
+        positionAnimator[0]?.cancel()
         if(!active || styleReady==0) return@LaunchedEffect
         val style=map?.style ?: return@LaunchedEffect
-        style.getSourceAs<GeoJsonSource>("position")?.setFeature(state.fix?.let{Feature.fromGeometry(Point.fromLngLat(it.lon,it.lat)).apply{addNumberProperty("bearing",state.bearing)}})
+        val positionSource=style.getSourceAs<GeoJsonSource>("position") ?: return@LaunchedEffect
+        val target=state.fix
+        val from=renderedPosition[0]
+        val epoch=styleEpoch[0]
+        val bearingFrom=map?.cameraPosition?.bearing?.toFloat() ?: 0f
+        val bearingTo=if(state.navigating && state.headingSource==HeadingSource.COURSE)state.bearing else bearingFrom
+        fun render(point:Coordinate?,fraction:Float=1f) {
+            if(styleEpoch[0]!=epoch || styleReady==0)return
+            renderedPosition[0]=point
+            positionSource.setFeature(point?.let{Feature.fromGeometry(Point.fromLngLat(it.lon,it.lat))})
+            if(point!=null && followPolicy.shouldFollow(currentState.navigating,currentState.selected!=null,SystemClock.elapsedRealtime())) {
+                map?.let { m ->
+                    // The source and camera share this frame's coordinate: the user stays
+                    // centred while the streets move, including during interpolation.
+                    m.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(m.cameraPosition).target(point.latLng())
+                        .bearing((bearingFrom+headingDelta(bearingFrom,bearingTo)*fraction).toDouble())
+                        .zoom(if(currentState.navigating)17.2 else m.cameraPosition.zoom)
+                        .tilt(if(currentState.tilted)if(currentState.navigating)50.0 else m.cameraPosition.tilt else 0.0).build()))
+                    cameraFix=point;cameraBearing=m.cameraPosition.bearing.toFloat()
+                }
+            }
+        }
+        if(target!=null && from!=null && distance(from,target)<150) {
+            positionAnimator[0]=ValueAnimator.ofFloat(0f,1f).apply {
+                duration=500;interpolator=LinearInterpolator()
+                addUpdateListener { val fraction=it.animatedValue as Float;render(Coordinate(from.lat+(target.lat-from.lat)*fraction,from.lon+(target.lon-from.lon)*fraction),fraction) }
+                start()
+            }
+        } else render(target)
         val polygon=state.fix?.let{accuracyBoundary(it,state.accuracy.toDouble())}.orEmpty()
         style.getSourceAs<GeoJsonSource>("accuracy")?.setFeature(if(polygon.isEmpty())null else Feature.fromGeometry(Polygon.fromLngLats(listOf(polygon.map{Point.fromLngLat(it.lon,it.lat)}))))
     }
-    LaunchedEffect(active,styleReady,state.fix,state.bearing,state.headingSource,state.navigating,state.tilted) {
+    // A timer also restores following while stationary, without waiting for a sensor event.
+    LaunchedEffect(active,state.navigating) {
+        while(active && state.navigating) { delay(1000);followTick++ }
+    }
+    LaunchedEffect(active,styleReady,state.fix,state.bearing,state.headingSource,state.navigating,state.tilted,state.selected,followTick) {
         if(!active || styleReady==0)return@LaunchedEffect
-        val desiredCameraBearing=if(state.headingSource==HeadingSource.COURSE || cameraFix==null)state.bearing else cameraBearing
-        if(state.navigating && following && state.fix!=null && (cameraFix==null || distance(cameraFix!!,state.fix)>1.5 || kotlin.math.abs(headingDelta(cameraBearing,desiredCameraBearing))>3f)) {
+        val m=map ?: return@LaunchedEffect
+        val following=followPolicy.shouldFollow(state.navigating,state.selected!=null,SystemClock.elapsedRealtime())
+        val desiredCameraBearing=if(state.navigating && state.headingSource==HeadingSource.COURSE)state.bearing else m.cameraPosition.bearing.toFloat()
+        if(positionAnimator[0]?.isRunning==true)return@LaunchedEffect
+        if(following && state.fix!=null && (cameraFix==null || distance(cameraFix!!,state.fix)>1.5 ||
+            distance(Coordinate(m.cameraPosition.target!!.latitude,m.cameraPosition.target!!.longitude),state.fix)>20 ||
+            kotlin.math.abs(headingDelta(cameraBearing,desiredCameraBearing))>3f)) {
             cameraFix=state.fix;cameraBearing=desiredCameraBearing
-            map?.easeCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(state.fix.latLng()).zoom(17.2).bearing(desiredCameraBearing.toDouble()).tilt(if(state.tilted) 50.0 else 0.0).build()),500)
+            m.easeCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(m.cameraPosition).target(state.fix.latLng())
+                .zoom(if(state.navigating)17.2 else m.cameraPosition.zoom).bearing(desiredCameraBearing.toDouble())
+                .tilt(if(state.tilted)if(state.navigating)50.0 else m.cameraPosition.tilt else 0.0).build()),500)
         }
     }
     LaunchedEffect(active,state.cameraRequest,styleReady,routeInsets) {
         val m=map ?: return@LaunchedEffect
         if(!active || styleReady==0) return@LaunchedEffect
-        following=true
+        followPolicy.resume();cameraFix=null;followTick++
         if(state.route!=null && !state.navigating) {
             val insets=routeInsets ?: return@LaunchedEffect
             val points=state.route.points.map{it.latLng()}+listOfNotNull(state.fix?.latLng(),state.selected?.point?.latLng())

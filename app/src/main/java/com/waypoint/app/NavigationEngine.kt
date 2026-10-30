@@ -3,7 +3,7 @@ package com.waypoint.app
 import kotlin.math.*
 
 data class Coordinate(val lat: Double, val lon: Double)
-data class Place(val id: String, val name: String, val address: String, val point: Coordinate, val kind: String = "place")
+data class Place(val id: String, val name: String, val address: String, val point: Coordinate, val kind: String = "place", val source: String = "")
 data class Maneuver(val point: Coordinate, val type: String, val modifier: String, val road: String, val distance: Double, val duration: Double, val exit: Int = 0) {
     val instruction: String get() {
         val action = when (type) {
@@ -27,7 +27,12 @@ data class Maneuver(val point: Coordinate, val type: String, val modifier: Strin
     }
 }
 data class RoadRoute(val points: List<Coordinate>, val steps: List<Maneuver>, val meters: Double, val seconds: Double, val mode:TravelMode=TravelMode.CAR)
-data class RouteProgress(val traveled: Double, val remaining: Double, val seconds: Double, val offRoute: Double, val nextStep: Int, val toTurn: Double, val snapped: Coordinate)
+data class RouteProgress(val traveled: Double, val remaining: Double, val seconds: Double, val offRoute: Double, val nextStep: Int, val toTurn: Double, val snapped: Coordinate,
+    val segmentIndex: Int = 0, val projectedAlong: Double = traveled)
+
+/** Trim at the accepted route projection, never at an off-road GPS coordinate. */
+fun RoadRoute.remainingPoints(progress: RouteProgress?): List<Coordinate> = if (progress == null) points else
+    listOf(progress.snapped) + points.drop((progress.segmentIndex + 1).coerceIn(1, points.lastIndex))
 
 fun distance(a: Coordinate, b: Coordinate): Double {
     val p = Math.toRadians(b.lat - a.lat); val q = Math.toRadians(b.lon - a.lon)
@@ -46,9 +51,11 @@ class NavigationEngine(val route: RoadRoute) {
         points.map { p -> project(p, floor - 1, Double.POSITIVE_INFINITY).also { floor = it.along }.along }
     }
     private var lastProgress = 0.0
+    private var progressPoint = route.points.first()
+    private var progressSegment = 0
     private var initialized = false
-    fun reset() { lastProgress = 0.0; initialized = false }
-    private data class Projection(val along: Double, val away: Double, val point: Coordinate)
+    fun reset() { lastProgress = 0.0; initialized = false; progressPoint = route.points.first(); progressSegment = 0 }
+    private data class Projection(val along: Double, val away: Double, val point: Coordinate, val segment: Int = 0)
     private fun project(p: Coordinate, minAlong: Double, maxAlong: Double): Projection {
         var best = Projection(0.0, Double.MAX_VALUE, route.points.firstOrNull() ?: p)
         for (i in 0 until route.points.size - 1) {
@@ -57,25 +64,29 @@ class NavigationEngine(val route: RoadRoute) {
             val scale = cos(Math.toRadians(p.lat))
             val ax = (a.lon-p.lon)*scale; val ay = a.lat-p.lat
             val dx = (b.lon-a.lon)*scale; val dy = b.lat-a.lat
-            val t = if (dx*dx+dy*dy == 0.0) 0.0 else (-(ax*dx+ay*dy)/(dx*dx+dy*dy)).coerceIn(0.0,1.0)
+            val span = cumulative[i+1]-cumulative[i]
+            val low = if(span > 0) ((minAlong-cumulative[i])/span).coerceIn(0.0,1.0) else 0.0
+            val high = if(span > 0) ((maxAlong-cumulative[i])/span).coerceIn(low,1.0) else 1.0
+            val t = if (dx*dx+dy*dy == 0.0) low else (-(ax*dx+ay*dy)/(dx*dx+dy*dy)).coerceIn(low,high)
             val snap = Coordinate(a.lat+(b.lat-a.lat)*t, a.lon+(b.lon-a.lon)*t)
             val along = cumulative[i]+(cumulative[i+1]-cumulative[i])*t
-            if (along < minAlong || along > maxAlong) continue
             val away = distance(p,snap)
-            if (away < best.away) best = Projection(along,away,snap)
+            if (away < best.away) best = Projection(along,away,snap,i)
         }
         return best
     }
-    fun update(p: Coordinate, movementAllowance: Double = 500.0): RouteProgress {
-        val hit = project(p, if (initialized) max(0.0,lastProgress-50) else 0.0,
+    fun update(p: Coordinate, movementAllowance: Double = 500.0, matchTolerance: Double = 25.0): RouteProgress {
+        val hit = project(p, if (initialized) max(0.0,lastProgress-250) else 0.0,
             if (initialized) lastProgress+movementAllowance else Double.POSITIVE_INFINITY)
         // Do not jump to a later parallel/crossing road on a noisy off-route fix.
-        if (hit.away < 50) { lastProgress = max(lastProgress, hit.along); initialized = true }
+        if (hit.away < matchTolerance && hit.along >= lastProgress) {
+            lastProgress = hit.along; progressPoint = hit.point; progressSegment = hit.segment; initialized = true
+        }
         val along = lastProgress.coerceAtMost(length)
         val index = stepPositions.indexOfFirst { it > along+8 }.let { if(it < 0) route.steps.lastIndex else it }
         val remaining = max(0.0,length-along)
         return RouteProgress(along, remaining, if(length>0) route.seconds*remaining/length else 0.0,
-            hit.away,index.coerceAtLeast(0), max(0.0,(stepPositions.getOrNull(index) ?: length)-along),hit.point)
+            hit.away,index.coerceAtLeast(0), max(0.0,(stepPositions.getOrNull(index) ?: length)-along),progressPoint,progressSegment,hit.along)
     }
     fun hasArrived(p: Coordinate, progress: RouteProgress): Boolean = progress.remaining < 35 && distance(p,route.points.last()) < 35
 }

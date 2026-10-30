@@ -5,6 +5,8 @@ import android.content.Intent
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class NavigationService : Service() {
     private val controller get() = (application as WaypointApplication).navigation
@@ -14,11 +16,13 @@ class NavigationService : Service() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel("navigation","Active navigation",NotificationManager.IMPORTANCE_LOW))
         startForeground(10,notification("Navigation is starting"))
         scope.launch {
-            controller.state.collect { s ->
-                if(s.navigating) {
-                    val text=if(!s.gpsReady) s.gpsStatus else s.route?.steps?.getOrNull(s.progress?.nextStep ?: 0)?.instruction ?: "Following your route"
-                    getSystemService(NotificationManager::class.java).notify(10,notification(text))
-                }
+            controller.state.map { s ->
+                if(!s.navigating)null else if(!s.gpsReady)s.gpsStatus
+                else if(s.routing)"Rerouting from your current position"
+                else if(s.offRoute)"Off route · finding a new route"
+                else s.route?.steps?.getOrNull(s.progress?.nextStep ?: 0)?.instruction ?: "Following your route"
+            }.distinctUntilChanged().collect { text ->
+                if(text!=null)getSystemService(NotificationManager::class.java).notify(10,notification(text))
             }
         }
     }

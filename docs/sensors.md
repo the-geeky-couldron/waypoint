@@ -3,7 +3,7 @@
 Waypoint requests precise location and uses the hardware capabilities available on the phone. No sensor can guarantee perfect navigation; confidence is exposed instead of concealing uncertainty.
 
 - **Fused position:** Google Play services high-accuracy fused location, requested every 1 second (fastest 500 ms, no batching). The provider combines available GNSS, Wi-Fi, cellular and its internal sensor processing. Waypoint does not control or claim which inputs contributed to an individual fix. Initial accurate-fix preference is enabled.
-- **Fallback:** Android LocationManager GPS and network providers when Google Play services is missing or fails to start. Fine-location permission remains required.
+- **Fallback:** Android LocationManager GPS and network providers when Google Play services is missing, fails to start, or supplies no recent accurate fix for eight seconds. Both streams are timestamp-ordered; stale network fixes cannot replace a recent GNSS fix. Fine-location permission remains required.
 - **Orientation:** Android `TYPE_ROTATION_VECTOR`, which normally fuses gyroscope, accelerometer and magnetometer. If absent, geomagnetic rotation vector, then accelerometer plus magnetometer. No compass hardware means GPS course only. Game rotation vector is deliberately not used because it lacks a stable north reference.
 - **True north:** Android GeomagneticField corrects magnetic declination using current coordinates, altitude when available, and date. The model updates after moving 10 km. Without a location fix the heading is labelled magnetic north.
 - **Course:** car/motorcycle enters GPS course at 2.5 m/s and exits below 1.5 m/s; walking uses 1.1 / 0.65 m/s. Bearing and speed confidence must also pass. Course expires after 2.5 seconds, and reacquisition must pass the entry threshold again.
@@ -27,3 +27,9 @@ Thirteen pure tests cover upright and flat pitch, cardinal angles, invalid matri
 ## Live compass control
 
 The visible compass now uses the same fresh, confidence-checked heading as the player pointer. Its north mark rotates under a fixed top index, with a numeric heading and cardinal label; it no longer remains frozen merely because the map is north-up. A dash replaces unreliable readings. Tapping the compass recenters the map. The map camera remains a separate concern and does not continuously spin with stationary phone movements.
+
+## Route following in 0.2.2
+
+Pointer position and camera target use the same interpolation frames while following. Moving course controls camera bearing; stationary compass movement does not spin the camera. Navigation gestures pause following for eight seconds after the gesture ends.
+
+Rerouting uses at least three accurate fixes over 2.5 seconds. Lateral deviation must exceed the larger of 20 m (15 m walking) and twice the reported accuracy. Travel backwards by more than 25 m or 2.5 times the accuracy also counts when moving. Fixes worse than ±35 m cannot initiate rerouting. Retries back off after failures; the old route remains dimmed while a replacement loads. Closely parallel roads inside GPS uncertainty can remain indistinguishable. This is not a lane-level map-matching engine.

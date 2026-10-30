@@ -98,3 +98,32 @@ Normal development verification after remediation:
 The completed standard security audit accounts for 31 coverage units and six independently verified needs-validation records, with no runtime-confirmed exploit. Both audit schema/coverage validators pass. It uses a frozen source snapshot of the earlier baseline; normal remediation builds above are separate development checks. No adversarial Binder/deep-link test was run on a personal phone or deployed service. The audit's required isolated execution controls were unavailable; see [security notes](security.md).
 
 At release preparation, the previously connected phone is absent from ADB. The final in-app download/cancel/installer-handoff smoke test and installation of the GitHub-built APK therefore remain pending until it reconnects. Earlier device checks above remain historical evidence, not new 0.2.1 device results.
+
+## Live navigation, search and launcher icon (0.2.2)
+
+These checks address the reported stale pointer/route and missing search matches. Earlier evidence above is historical.
+
+- **104 unit tests per build variant** cover the existing security/update boundaries plus sustained deviation, opposite-direction travel, noisy and batched fixes, retry backoff, route-line trimming, camera-follow policy, typo/spacing/accent matching, category shortcuts, provider fallback, cache reuse, cancellation and the confirmed search alias.
+- **NavigationJourneyTest: three connected-device tests passed.** An isolated controller receives synthetic London fixes through the production location handler, with a controlled routing provider. The tests verify position/progress advancement, replacement geometry after a missed turn, retained motorcycle mode/destination, stale/poor-fix handling, and recovery after a simulated routing outage. They do not replace the device's location provider or change saved places.
+- **MapFollowingTest passed on the phone.** Native MapLibre source coordinates and camera target are checked during and after movement. A real touch pan pauses guidance following; it recentres after eight seconds. The test also changes world while the position renderer is active. The remaining line starts at the user, with the travelled line removed.
+- **SearchCoverageTest passed against live services on the phone.** Station and alternate-spelling queries returned provider results with their actual coordinates and addresses. Approximate, unrelated results are removed when a strong match exists. This verifies the exercised queries at test time, not all places or all devices. Private example queries and locations are intentionally omitted.
+- **LauncherIconTest passed.** The manifest references an Android adaptive icon, its monochrome layer is present, and native renders cover the normal mark plus light/dark wallpaper-derived tints at 112 dp and 48 dp. Samsung may wrap icons returned by PackageManager; the test checks the declared adaptive drawable before native rendering. The two game-independent icon colours are not applied to game-map palettes.
+- The final combined device run reports **OK (6 tests)** in 53.47 seconds. Debug and release each pass **104 unit tests**, and the packaged-manifest boundary checks plus all **27 map styles** pass. Android lint reports **0 errors / 35 existing warnings** in each build variant.
+- The two read-only `SecurityConfigurationTest` checks also pass on the connected phone: the car service remains disabled/private, the update provider remains private, and backup/cleartext boundaries remain enforced.
+- Two initial instrumentation harness problems (a non-void JUnit method and Samsung's wrapped package icon) were corrected and rerun. They are not counted as successful tests.
+
+Native captures and device logs stay under ignored `.tooling/` / `.impeccable/review/`. Only the standalone icon rendered from original vector resources is published. No user trip screenshots or status bars are added to public documentation.
+
+**Not established by these checks:** real moving-road accuracy, difficult GNSS/magnetic environments, distinguishing roads inside the position uncertainty, screen-off endurance/battery behaviour, or Google Maps-equivalent global place coverage. A real-road check is still needed; no claim of perfect navigation is made.
+
+
+## Public examples and promotional README (0.2.3)
+
+- Debug and release builds each pass **106 unit tests**. The new tests cover empty-by-default, instance-local spelling aliases and rejection of invalid alias entries. Android lint remains **0 errors / 35 warnings** per variant; all **27 map styles** and both packaged-manifest gates pass.
+- **SearchAliasStorageTest: three device tests pass.** Synthetic private-preference fixtures verify that a confirmed spelling reaches the provider and that malformed/non-string storage safely preserves the original query.
+- **Navigation and icon regressions: five device tests pass.** The three controlled journey tests, native camera-follow test and adaptive-icon test were rerun successfully after the privacy change.
+- **SearchCoverageTest passes with fixed public London landmarks** against the live phone providers. Two read-only component/security tests also pass. Private search examples are excluded from committed fixtures and public notes.
+- Promotional artwork is composed from existing, sanitised native London demo captures and the original adaptive icon. All public image files were checked for EXIF/GPS metadata; none is present.
+- GitHub's Markdown renderer preserves the responsive picture sources. Browser captures at **1280px desktop and 390px mobile** show loaded images, dedicated mobile compositions, and no document-level horizontal overflow. Code blocks retain their normal internal scrolling.
+
+Public release descriptions use neutral feature descriptions. The current source tree is checked for private sample queries, device identifiers and local account paths. The affected earlier commit and release are being superseded by the cleaned release history. Copies already downloaded or cached elsewhere cannot be recalled.

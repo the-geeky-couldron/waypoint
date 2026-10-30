@@ -1,22 +1,16 @@
-Real streets. Game worlds. A safer journey.
+A new look for the project, with personal examples kept private.
 
-Waypoint 0.2.1 is the first public GitHub-built Android release, with all 27 game-inspired worlds and manual in-app updates.
+Waypoint 0.2.3 adds a visual product showcase and keeps device-specific spelling aliases in private app preferences. No personal search examples are bundled in new builds or used in public regression fixtures.
 
 ### What changed
 
-- Incoming destination links cannot interrupt active guidance. Cancelled or outdated address lookups no longer replace a newer destination.
-- Network requests cancel promptly; response sizes, JSON structure, route complexity, coordinates and timing values are checked before use.
-- Route preparation moves off the main thread, and invalid sensor fixes are rejected.
-- Gradle is updated to 8.14.6 with a verified distribution checksum. Release builds do not consume shared Gradle caches.
-- GitHub Actions explicitly installs the Android SDK, fixing the missing `sdkmanager` failure.
-- A refreshed screenshot gallery, installation guide and public security notes explain the app and its limits.
-
-### Android Auto
-
-The experimental Android Auto component is disabled pending isolated validation of its inter-app boundary. Car, motorcycle and walking navigation on the phone remain available.
+- Original promotional artwork shows six real game-inspired maps, with separate compositions for desktop and mobile readers.
+- The README now has a clear download section, a world gallery, navigation features and concise installation instructions.
+- Search spelling aliases are device-local; fuzzy matching and the provider fallback remain available to everyone.
+- Public search tests use fictional examples or fixed public demonstration landmarks. Release notes use neutral descriptions.
 
 ### Install
 
-Download **Waypoint.apk** below (Android 8.0+). Compatible upgrades preserve saved places and settings. Future releases appear in **Settings → App updates**; Android always asks before installation.
+Download **Waypoint.apk**, or open **Settings → App updates**. Compatible updates preserve your saved places and preferences.
 
-Every world is included. No ads, accounts or subscriptions. Maps and routing require an internet connection. Real-road and battery testing remain outstanding. The source security review does not certify the app as invulnerable; see `docs/security.md` for findings, fixes and remaining validation.
+This release retains the 0.2.2 live-location, centred-camera, route-progress and automatic-rerouting fixes, plus the adaptive Material You launcher icon. All 27 game worlds are included. Maps and routes require internet access; Android Auto remains disabled. Controlled checks do not replace real-road and battery-endurance validation.
