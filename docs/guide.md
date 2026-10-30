@@ -12,33 +12,27 @@ Visual references and implementation decisions are recorded in [the sourcebook](
 ## Use
 
 Install `dist/Waypoint.apk` on Android 8.0 or newer, or build the debug APK below.
-Open Waypoint, choose a world on the welcome screen, then tap **Open map**. Tap **Recenter**, and allow **precise location**. Search for
+Open Waypoint, choose a world on the welcome screen, then tap **Open map**. Tap **Locate**, and allow **precise location**. Search for
 a destination or hold the map to drop a pin. Choose Car, Motorcycle or Walk. Once a route is ready, tap
 **Start navigation**. The app provides live position, next turns, ETA, remaining
 distance, speed, spoken instructions, off-route recalculation, and arrival.
 
 - **Worlds:** 27 game-inspired styles, searchable by game name. All included.
 - **Saved:** bookmark a destination; navigate to it again later.
-- **Settings:** voice, metric/imperial, 2D/3D, car day/night styles, permissions,
+- **Settings:** voice, metric/imperial, 2D/3D, updates, permissions,
   and clearing saved places/history.
 - Dragging the map pauses camera following. Tap the location button to recenter.
 - Navigation continues through a location foreground service when the screen is
   off. Stop it in the app or from its ongoing Android notification.
 - Standard `geo:` and `google.navigation:` destination links are supported.
 
-## Android Auto (experimental)
+## Android Auto (disabled)
 
-A projected Car App Library integration shares the phone's routing engine and
-renders the selected day/night map onto the car surface. Saved/recent destinations,
-route preview, start/end navigation, mute, next-turn guidance, ETA, and live route
-rendering are implemented. Choose the destination and grant precise location on
-the phone while parked. The car display can also select saved/recent destinations.
-
-This integration has not been tested on a head unit or Desktop Head Unit. A
-sideloaded debug app may require Android Auto developer mode / unknown sources;
-normal distribution requires Android Auto review. Do not assume production car
-compatibility from a successful APK build. No car hardware is needed for the
-phone's navigation features.
+The experimental projected integration is disabled and not exported in 0.2.1. Its
+Binder caller identity and protocol-state handling need isolated cross-UID validation
+before this component can be enabled. The source remains available for that work.
+There is no user setting to bypass this restriction. Phone navigation continues to
+support Car, Motorcycle and Walk. See [the security review](security.md).
 
 ## Build
 
@@ -54,7 +48,7 @@ sdk.dir=/absolute/path/to/android-sdk
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The supplied `dist/Waypoint.apk` is the optimized private build. Rebuild it with
+The supplied `dist/Waypoint.apk` is the optimized GitHub release build. Rebuild it with
 `./gradlew :app:assembleRelease`. Connected UI tests can target that build with
 `./gradlew -PtestBuildType=release :app:connectedReleaseAndroidTest` on an unlocked
 development phone; the navigation flow expects a saved nearby destination.
@@ -89,7 +83,7 @@ See [sensor behavior and limits](sensors.md).
 ## Location and privacy
 
 Location permission is requested when you tap the GPS control. Precise location is
-needed for navigation. Foreground GPS stops when the app/car is not visible unless
+needed for navigation. Foreground GPS stops when the app is not visible unless
 navigation is active; the navigation service is visible in Android notifications.
 No background-location permission, account, analytics or app-owned server exists.
 The optional fused-location dependency uses Google Play services and its device

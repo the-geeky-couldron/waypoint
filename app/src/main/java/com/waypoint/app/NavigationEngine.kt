@@ -47,6 +47,7 @@ class NavigationEngine(val route: RoadRoute) {
     }
     private var lastProgress = 0.0
     private var initialized = false
+    fun reset() { lastProgress = 0.0; initialized = false }
     private data class Projection(val along: Double, val away: Double, val point: Coordinate)
     private fun project(p: Coordinate, minAlong: Double, maxAlong: Double): Projection {
         var best = Projection(0.0, Double.MAX_VALUE, route.points.firstOrNull() ?: p)

@@ -1,6 +1,14 @@
 /** Generate map lettering with the official MapLibre font-maker / FreeType WASM. */
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const root=path.resolve(__dirname,'..'),tool=path.join(root,'tools/glyph-generation');
+const {createHash}=require('node:crypto');
+for(const [name,sha256] of Object.entries({
+ 'sdfglyph.cjs':'2d5cce9e20511e3e1798a696b496cfb4fb9c55cd9cceaa73fd77849e1c3d7a64',
+ 'sdfglyph.wasm':'de2986e66201499de76f21bb3a649e1f27d7d68af21cb2616dc3a7b25bade691'
+})) {
+ if(createHash('sha256').update(fs.readFileSync(path.join(tool,name))).digest('hex')!==sha256)
+  throw new Error(`Unreviewed glyph generator: ${name}. Review provenance before updating the hash.`);
+}
 const fonts={
  'Waypoint Condensed':'roboto_condensed.ttf',
  'Waypoint Technical':'rajdhani.ttf',

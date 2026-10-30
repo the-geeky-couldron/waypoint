@@ -93,13 +93,13 @@ class MainActivity : ComponentActivity() {
         override fun onDisplayChanged(displayId:Int){controller.setDisplayRotation(windowManager.defaultDisplay.rotation)}
     }
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState); enableEdgeToEdge(); if(savedInstanceState==null){controller.handleNavigationIntent(intent);if(intent?.action==Intent.ACTION_VIEW)destinationLaunch++}
+        super.onCreate(savedInstanceState); enableEdgeToEdge(); if(savedInstanceState==null && controller.handleNavigationIntent(intent)) destinationLaunch++
         setContent { val state by controller.state.collectAsStateWithLifecycle()
             LaunchedEffect(state.navigating) { if(state.navigating) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
             WaypointApp(controller,state,destinationLaunch)
         }
     }
-    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent);setIntent(intent);controller.handleNavigationIntent(intent);if(intent.action==Intent.ACTION_VIEW)destinationLaunch++ }
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent);setIntent(intent);if(controller.handleNavigationIntent(intent))destinationLaunch++ }
     override fun onStart() { super.onStart();getSystemService(DisplayManager::class.java).registerDisplayListener(displayListener,null); controller.setDisplayRotation(windowManager.defaultDisplay.rotation); controller.setVisible(true) }
     override fun onStop() { getSystemService(DisplayManager::class.java).unregisterDisplayListener(displayListener);controller.setVisible(false); super.onStop() }
 }
@@ -231,10 +231,8 @@ fun WaypointApp(controller: NavigationController,state: NavState,destinationLaun
                 SettingRow("3D perspective","Tilt the map while navigating",state.tilted,controller::toggleTilt)
                 HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                 Text("Android Auto",style=MaterialTheme.typography.titleLarge)
-                SettingRow("Always use night style","Override the car's day/night setting",state.carNight,{controller.setCarNight(!state.carNight)})
-                WorldDropdown("Day map",state.carDayWorld,{controller.setCarWorld(it,false)})
-                WorldDropdown("Night map",state.carNightWorld,{controller.setCarWorld(it,true)})
-                Text("Connect to Android Auto to use saved destinations and live guidance. Car display integration is experimental and hasn't been road-tested.",style=MaterialTheme.typography.bodySmall,color=Muted)
+                Text("Unavailable in this build",style=MaterialTheme.typography.bodyMedium)
+                Text("The experimental car display integration is paused for security validation. Car, motorcycle and walking navigation remain available on your phone.",style=MaterialTheme.typography.bodySmall,color=Muted)
                 HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                 Text("Location & sensors",style=MaterialTheme.typography.titleMedium)
                 Text(state.locationProvider,style=MaterialTheme.typography.bodyMedium)

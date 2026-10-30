@@ -16,6 +16,8 @@ data class ReleaseUpdate(val version: String, val versionCode: Int, val url: Str
             return major * 1_000_000 + minor * 1_000 + patch
         }
         fun parse(json: String, installedCode: Int): ReleaseUpdate? {
+            require(json.length <= 1_000_000) { "The release response is too large." }
+            JsonSafety.checkDepth(json)
             val release = JSONObject(json)
             if (release.optBoolean("draft") || release.optBoolean("prerelease")) return null
             val tag = release.getString("tag_name")

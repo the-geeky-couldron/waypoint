@@ -1,5 +1,5 @@
 """Build game HUD map palettes from OpenFreeMap Liberty (OSM/OpenMapTiles)."""
-import json, copy
+import json, copy, hashlib
 from cartography_profiles import PROFILES
 from pathlib import Path
 import urllib.request
@@ -8,6 +8,10 @@ if not source.exists():
  source.parent.mkdir(parents=True,exist_ok=True)
  with urllib.request.urlopen('https://tiles.openfreemap.org/styles/liberty',timeout=30) as response:
   source.write_bytes(response.read())
+# Review a new source deliberately; upstream changes must not silently rewrite themes.
+expected_source_sha256 = "408245464e76791801a64393c403433d09e8110eb9516040f8dc2b62584eee2a"
+if hashlib.sha256(source.read_bytes()).hexdigest() != expected_source_sha256:
+ raise ValueError("OpenFreeMap Liberty changed. Review the new base style before updating its checksum.")
 base=json.loads(source.read_text())
 palettes={
 'los_santos':dict(bg='#202020',land='#252525',park='#30362f',water='#182126',building='#383838',road='#898989',casing='#171717',label='#e1e1da',halo='#262626',outline='#505050'),

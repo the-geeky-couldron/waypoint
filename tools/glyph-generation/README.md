@@ -16,3 +16,8 @@ ranges are packaged in Android assets. Font source licenses are in `docs/license
 The loader resolves these ranges locally and retains the tile provider's Noto Sans
 coverage for unbundled scripts. This tool is for regeneration; it is not executed
 inside the Android app.
+
+The regeneration script verifies both recorded hashes before loading this runtime.
+Refreshing the generator requires reviewing its upstream source and updating the
+pins deliberately. A matching hash establishes byte identity, not an independent
+audit of the WASM implementation.

@@ -1,6 +1,10 @@
 package com.waypoint.app
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.withTimeout
+import java.util.concurrent.TimeUnit
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -65,5 +69,46 @@ class MapRepositoryTest {
         response(route);val r=repository.route(Coordinate(0.0,0.0),Coordinate(0.0,0.001),TravelMode.WALK)
         val payload=org.json.JSONObject(server.takeRequest().requestUrl!!.queryParameter("json")!!)
         assertEquals("pedestrian",payload.getString("costing"));assertEquals(TravelMode.WALK,r.mode)
+    }
+    @Test fun rejectsOversizedResponsesBeforeParsing()=runBlocking {
+        response(" ".repeat(2*1024*1024+1))
+        assertTrue(runCatching { repository.search("Park",Coordinate(0.0,0.0)) }.exceptionOrNull()?.message?.contains("too large")==true)
+    }
+    @Test fun rejectsExcessiveSearchResults()=runBlocking {
+        response("{\"features\":["+List(9){feature}.joinToString(",")+"]}")
+        assertTrue(runCatching { repository.search("Park",Coordinate(0.0,0.0)) }.isFailure)
+    }
+    @Test fun rejectsChunkedResponsesWithoutContentLength()=runBlocking {
+        server.enqueue(MockResponse().setChunkedBody(" ".repeat(2*1024*1024+1),8192))
+        assertTrue(runCatching { repository.search("Park",Coordinate(0.0,0.0)) }.exceptionOrNull()?.message?.contains("too large")==true)
+    }
+    @Test fun limitsDecompressedBytesInsteadOfGzipSize()=runBlocking {
+        val bytes=java.io.ByteArrayOutputStream()
+        java.util.zip.GZIPOutputStream(bytes).use { it.write(" ".repeat(2*1024*1024+1).toByteArray()) }
+        server.enqueue(MockResponse().setBody(okio.Buffer().write(bytes.toByteArray())).addHeader("Content-Encoding","gzip"))
+        assertTrue(runCatching { repository.search("Park",Coordinate(0.0,0.0)) }.exceptionOrNull()?.message?.contains("too large")==true)
+    }
+    @Test fun rejectsRouteGeometryBeyondPointBudget()=runBlocking {
+        response(route.replace("[[0.0,0.0],[0.001,0.0]]","["+List(50_001){"[0.0,0.0]"}.joinToString(",")+"]"))
+        assertTrue(runCatching { repository.route(Coordinate(0.0,0.0),Coordinate(0.0,0.001)) }.exceptionOrNull()?.message?.contains("too short or too complex")==true)
+    }
+    @Test fun rejectsInvalidProviderCoordinates()=runBlocking {
+        response("{\"features\":[${feature.replace("88.3,22.8","88.3,122.8")}]}")
+        assertTrue(runCatching { repository.search("Park",Coordinate(0.0,0.0)) }.isFailure)
+    }
+    @Test fun rejectsNegativeRouteDuration()=runBlocking {
+        response(route.replace("\"duration\":60.0","\"duration\":-1.0"))
+        assertTrue(runCatching { repository.route(Coordinate(0.0,0.0),Coordinate(0.0,0.001)) }.isFailure)
+    }
+    @Test fun refusesRedirectBeforeSendingCoordinatesElsewhere()=runBlocking {
+        server.enqueue(MockResponse().setResponseCode(302).addHeader("Location",server.url("/unexpected")))
+        assertTrue(runCatching { repository.search("Park",Coordinate(0.0,0.0)) }.isFailure)
+        assertEquals(1,server.requestCount)
+    }
+    @Test fun cancellationDoesNotWaitForResponseDeadline()=runBlocking {
+        server.enqueue(MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE))
+        val request=launch { repository.search("Park",Coordinate(0.0,0.0)) }
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { assertNotNull(server.takeRequest(5,TimeUnit.SECONDS)) }
+        withTimeout(1000) { request.cancelAndJoin() }
     }
 }

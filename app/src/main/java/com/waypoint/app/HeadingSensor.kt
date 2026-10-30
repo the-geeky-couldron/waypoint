@@ -43,8 +43,10 @@ class HeadingSensor(context:Context,private val onHeading:(Float,Boolean,String)
     }
     fun updateLocation(location:Location) {
         val fix=Coordinate(location.latitude,location.longitude)
+        if (!fix.isValid()) return
         if(declinationFix==null || distance(declinationFix!!,fix)>10000) {
-            declination=GeomagneticField(location.latitude.toFloat(),location.longitude.toFloat(),if(location.hasAltitude())location.altitude.toFloat() else 0f,System.currentTimeMillis()).declination
+            val altitude = if(location.hasAltitude() && location.altitude.isFinite()) location.altitude.coerceIn(-12000.0,100000.0).toFloat() else 0f
+            declination=GeomagneticField(location.latitude.toFloat(),location.longitude.toFloat(),altitude,System.currentTimeMillis()).declination
             declinationFix=fix
         }
     }

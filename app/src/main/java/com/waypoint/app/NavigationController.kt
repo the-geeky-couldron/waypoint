@@ -133,6 +133,8 @@ class NavigationController(private val app: Application) {
     private var offRouteCount = 0
     private var routeJob: Job? = null
     private var searchJob: Job? = null
+    private var importJob: Job? = null
+    private val importGate = NavigationImportGate()
     private var routeOrigin: Coordinate? = null
     private var engine: NavigationEngine? = null
     private var spoken = mutableSetOf<String>()
@@ -171,20 +173,37 @@ class NavigationController(private val app: Application) {
     fun setCarVisible(value: Boolean) { carVisible=value; if(value) enabled=true; updateTracking() }
     fun setCarNight(value: Boolean) { _state.update{it.copy(carNight=value)}; prefs.edit().putBoolean("carNight",value).apply() }
     fun setCarWorld(world: World, night: Boolean) { _state.update{if(night)it.copy(carNightWorld=world) else it.copy(carDayWorld=world)}; prefs.edit().putString(if(night)"carNightWorld" else "carDayWorld",world.name).apply() }
-    fun handleNavigationIntent(intent: Intent?) {
-        val uri=intent?.data ?: return
-        if(uri.scheme !in listOf("geo","google.navigation")) return
-        val raw=uri.schemeSpecificPart
-        val q=android.net.Uri.decode(if("q=" in raw) raw.substringAfter("q=").substringBefore("&") else raw.substringBefore("?"))
-        val match=Regex("^(-?[0-9]+(?:\\.[0-9]+)?),\\s*(-?[0-9]+(?:\\.[0-9]+)?)").find(q)
-        if(match!=null) {
-            val lat=match.groupValues[1].toDouble();val lon=match.groupValues[2].toDouble()
-            if(lat in -90.0..90.0 && lon in -180.0..180.0) select(Place("shared:$lat,$lon",q.substringAfter('(',"Shared destination").substringBefore(')'),"Shared location",Coordinate(lat,lon)))
-        } else if(q.isNotBlank()) scope.launch {
-            runCatching{repository.search(q,_state.value.fix ?: PreviewCenter)}.onSuccess{places->places.firstOrNull()?.let{select(it)}}.onFailure{_state.update{it.copy(message="Couldn't find the shared destination. Search by address.")}}
+    fun handleNavigationIntent(intent: Intent?): Boolean {
+        val proposal = NavigationImport.parse(intent?.action, intent?.dataString) ?: return false
+        invalidateImport()
+        if (_state.value.navigating) {
+            _state.update { it.copy(message="End your current navigation before opening a shared destination.") }
+            return false
         }
+        when (proposal) {
+            is NavigationImport.Point -> select(Place("shared:${proposal.coordinate.lat},${proposal.coordinate.lon}", proposal.label, "Shared location", proposal.coordinate))
+            is NavigationImport.Search -> {
+                val ticket = importGate.begin()
+                importJob = scope.launch {
+                    try {
+                        val place = repository.search(proposal.query, _state.value.fix ?: PreviewCenter).firstOrNull()
+                        ensureActive()
+                        if (!importGate.canApply(ticket, _state.value.navigating)) return@launch
+                        importJob = null
+                        if (place != null) select(place)
+                        else _state.update { it.copy(message="Couldn't find the shared destination. Search by address.") }
+                    } catch (e: CancellationException) { throw e }
+                    catch (_: Exception) {
+                        ensureActive()
+                        if (importGate.canApply(ticket, _state.value.navigating)) _state.update { it.copy(message="Couldn't find the shared destination. Search by address.") }
+                    }
+                }
+            }
+        }
+        return true
     }
-    fun clearHistory() { _state.update{it.copy(recent=emptyList(),saved=emptyList())}; prefs.edit().remove("recent").remove("saved").apply() }
+    private fun invalidateImport() { importGate.invalidate(); importJob?.cancel(); importJob=null }
+    fun clearHistory() { invalidateImport(); _state.update{it.copy(recent=emptyList(),saved=emptyList())}; prefs.edit().remove("recent").remove("saved").apply() }
     fun setVisible(value: Boolean) { visible=value; updateTracking() }
     fun enableLocation() { enabled=true; prefs.edit().putBoolean("locationEnabled",true).apply(); _state.update{it.copy(gpsStatus="Finding GPS…",cameraRequest=it.cameraRequest+1)}; updateTracking() }
     private fun updateTracking() {
@@ -234,24 +253,27 @@ class NavigationController(private val app: Application) {
     private fun receiveLocation(location: Location) {
         if(!listening)return
         val now = SystemClock.elapsedRealtime()
+        val fix = Coordinate(location.latitude,location.longitude)
+        if (!fix.isValid() || !location.hasAccuracy() || !location.accuracy.isFinite() || location.accuracy < 0f) return
         if(location.elapsedRealtimeNanos<=lastLocationNanos)return
-        if((SystemClock.elapsedRealtimeNanos()-location.elapsedRealtimeNanos)/1_000_000 > 15000) return
+        val age = (SystemClock.elapsedRealtimeNanos()-location.elapsedRealtimeNanos)/1_000_000
+        if(age !in -1000L..15000L) return
         if(location.provider==LocationManager.NETWORK_PROVIDER && now-lastGpsElapsed<10000) return
         if(location.provider==LocationManager.GPS_PROVIDER) lastGpsElapsed=now
         lastLocationNanos=location.elapsedRealtimeNanos
         heading.updateLocation(location)
-        val fix = Coordinate(location.latitude,location.longitude)
         val first = _state.value.fix==null
         lastFixElapsed=now
         val reliable = location.hasAccuracy() && location.accuracy <= 60f
+        val speed = if(location.hasSpeed() && location.speed.isFinite() && location.speed >= 0f) location.speed else 0f
         _state.update{it.copy(fix=fix,accuracy=location.accuracy,gpsReady=reliable,
             gpsStatus=if(reliable) "GPS connected" else "Improving GPS accuracy…",
-            speed=if(location.hasSpeed()) location.speed else 0f,
+            speed=speed,
             city=if(first)"Current area" else it.city,
             cameraRequest=it.cameraRequest+if(first) 1 else 0)}
         applyHeading(headingArbiter.location(
             bearing=if(location.hasBearing())location.bearing else null,
-            speed=if(location.hasSpeed())location.speed else 0f,
+            speed=speed,
             bearingAccuracy=if(location.hasBearingAccuracy())location.bearingAccuracyDegrees else null,
             speedAccuracy=if(location.hasSpeedAccuracy())location.speedAccuracyMetersPerSecond else null,
             fixReliable=reliable,mode=_state.value.mode,now=now))
@@ -267,7 +289,7 @@ class NavigationController(private val app: Application) {
         if(!reliable) return
         val s = _state.value
         if(s.navigating) {
-            val progress = engine?.update(fix, maxOf(500.0,location.speed*20.0)) ?: return
+            val progress = engine?.update(fix, maxOf(500.0,speed*20.0)) ?: return
             _state.update{it.copy(progress=progress)}
             if(progress.offRoute > maxOf(55.0,location.accuracy*1.5)) offRouteCount++ else offRouteCount=0
             if(offRouteCount>=3 && now-lastReroute>15000 && !s.routing) {
@@ -287,6 +309,8 @@ class NavigationController(private val app: Application) {
         } else if(s.selected!=null && s.route==null && !s.routing && s.routeError==null && !s.arrived) requestRoute()
     }
     fun select(place: Place) {
+        invalidateImport()
+        if (!place.point.isValid()) { _state.update { it.copy(message="That destination has invalid coordinates. Choose another place.") }; return }
         stopNavigation(clear=false)
         _state.update{it.copy(selected=place,route=null,progress=null,routeError=null,arrived=false,cameraRequest=it.cameraRequest+1)}
         if(_state.value.gpsReady) requestRoute()
@@ -301,19 +325,23 @@ class NavigationController(private val app: Application) {
             try {
                 val route = repository.route(origin,target.point,s.mode)
                 ensureActive()
-                routeOrigin=origin; engine=NavigationEngine(route); spoken.clear(); offRouteCount=0
+                val prepared = withContext(Dispatchers.Default) { NavigationEngine(route) }
+                ensureActive()
+                routeOrigin=origin; engine=prepared; spoken.clear(); offRouteCount=0
                 _state.update{it.copy(route=route,progress=engine!!.update(it.fix ?: origin),routing=false,routeError=null,cameraRequest=it.cameraRequest+if(reroute) 0 else 1)}
             } catch(e: CancellationException) { throw e }
-            catch(e: Exception) { _state.update{it.copy(routing=false,routeError=e.message ?: "Couldn't load the route. Check your connection.")} }
+            catch(e: Exception) { ensureActive(); _state.update{it.copy(routing=false,routeError=e.message ?: "Couldn't load the route. Check your connection.")} }
         }
     }
     fun startNavigation() {
+        invalidateImport()
         val s = _state.value
         if(!s.gpsReady || s.fix==null || !hasLocationPermission()) { _state.update{it.copy(message="Enable precise GPS and wait for a location fix.")}; return }
         if(s.route==null || s.routing || s.route.mode!=s.mode) return
         if((routeOrigin?.let{distance(it,s.fix)} ?: 0.0)>100.0) { requestRoute(); _state.update{it.copy(message="Updating the route from your current position. Start when it's ready.")}; return }
         if(s.routeError!=null) { requestRoute(); return }
-        engine=NavigationEngine(s.route); spoken.clear()
+        val prepared = engine?.takeIf { it.route === s.route } ?: run { requestRoute(); return }
+        prepared.reset(); spoken.clear()
         _state.update{it.copy(navigating=true,arrived=false,cameraRequest=it.cameraRequest+1)}
         try { ContextCompat.startForegroundService(app,Intent(app,NavigationService::class.java)) }
         catch(_: Exception) { _state.update{it.copy(navigating=false,message="Android couldn't start navigation. Keep the app open and try again.")}; return }
@@ -325,12 +353,14 @@ class NavigationController(private val app: Application) {
         if(s.voice && !ttsReady) _state.update{it.copy(message="Voice unavailable. Install an English text-to-speech voice in Android settings. Visual guidance is active.")}
     }
     fun stopNavigation(clear: Boolean = true) {
+        invalidateImport()
         routeJob?.cancel(); routeJob=null; tts.stop()
         _state.update{it.copy(navigating=false,routing=false,arrived=if(clear) false else it.arrived)}
         app.stopService(Intent(app,NavigationService::class.java)); updateTracking()
     }
     fun serviceStopped() { if(_state.value.navigating) { _state.update{it.copy(navigating=false,message="Navigation stopped.")}; tts.stop(); updateTracking() } }
     fun search(query: String) {
+        invalidateImport()
         searchJob?.cancel(); _state.update{it.copy(query=query,searching=query.length>=2,searchResults=emptyList(),searchError=null)}
         if(query.trim().length<2) { _state.update{it.copy(searching=false)}; return }
         searchJob=scope.launch {
@@ -339,7 +369,7 @@ class NavigationController(private val app: Application) {
                 val places=repository.search(query,_state.value.fix ?: PreviewCenter); ensureActive()
                 _state.update{it.copy(searchResults=places,searching=false)}
             } catch(e: CancellationException) { throw e }
-            catch(e: Exception) { _state.update{it.copy(searching=false,searchError=e.message ?: "Search unavailable. Try again.")} }
+            catch(e: Exception) { ensureActive(); _state.update{it.copy(searching=false,searchError=e.message ?: "Search unavailable. Try again.")} }
         }
     }
     fun changeMode(mode:TravelMode) {

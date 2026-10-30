@@ -6,6 +6,7 @@ The public update channel is `the-geeky-couldron/waypoint` on GitHub Releases. A
 
 - Pushes to `main`, pull requests and manual runs: version validation, 27 map-style checks, debug APK, unit tests and Android lint. Reports and the debug APK are saved for 14 days.
 - A pushed `v*` tag: the same checks, followed by an optimized, signed APK. GitHub publishes `Waypoint.apk` and `SHA256SUMS` only after those jobs succeed.
+- The signing job disables Gradle caches. Verification caches are read-only outside pushes to `main`; the basic GitHub cache provider is explicit.
 - Pull requests never receive the release signing secrets. Actions are pinned to commit hashes. The release job alone receives repository-content write permission.
 
 ## Signing

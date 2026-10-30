@@ -92,3 +92,12 @@ The research images are retained locally in `.tooling/gameuidb/`, not shipped in
 ## Native map fonts
 
 See [map-fonts.md](map-fonts.md) for researched font roles, bundled native SDF stacks, and the distinction between identified original families and licensed substitutes.
+
+## Reproducible base-style input
+
+The OpenFreeMap Liberty input used for these themes has SHA-256
+`408245464e76791801a64393c403433d09e8110eb9516040f8dc2b62584eee2a`. `scripts/generate_styles.py` verifies this pin before
+regenerating. Upstream changes fail closed until reviewed and repinned. The source
+is https://tiles.openfreemap.org/styles/liberty; a fresh download may no longer
+match. Committed generated styles are Android build inputs; CI does not regenerate
+from that endpoint.

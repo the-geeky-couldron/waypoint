@@ -81,3 +81,19 @@ The new updater and release preparation pass 60 unit tests (the existing 45 plus
 The GitHub Actions workflow and public update channel are prepared locally. Repository creation, encrypted signing-secret setup, a live Actions run, release download and installation testing are pending the user's repository-visibility answer and GitHub CLI authorization. Download/ready states are currently source-reviewed, not a claimed end-to-end release-update pass.
 
 The independent UI review accepted the captured README and native updater idle/error layouts. Its single material fix was stale private-only product context; the verdict pass marked that documentation fix **ship**. This verdict does not certify the still-pending GitHub release or download/installation path. The locally built 0.2.0 APK is installed on the connected phone, with its installed SHA-256 verified against the packaged file.
+
+## Security hardening and release preparation (0.2.1)
+
+Normal development verification after remediation:
+
+- Debug and optimized release builds succeed with Gradle 8.14.6 and AndroidX Car 1.8.0-rc01.
+- Both variants pass **82 unit tests**, with zero failures, errors or skips. Added cases cover destination parsing/import generations, strict JSON nesting and value limits, invalid provider fields, redirect rejection, oversized known-length/chunked/gzip responses, geometry limits and request cancellation.
+- Android lint reports **0 errors and 35 warnings** for each variant. Warnings remain; this is not a warning-free build claim.
+- All **27 map styles** pass the official style validator. Version metadata passes the release-version check.
+- Debug instrumentation APK compiles. New read-only installed-package tests check the disabled/private car component, private update provider, backup and cleartext policy.
+- Packaged debug/release manifest checks pass and are now CI gates. The car service is disabled and non-exported; the release is not debuggable. This verifies build output, not cross-UID exploit behavior.
+- The README was rendered through GitHub's Markdown renderer and visually inspected in Helium at desktop width and in a 390px iframe. Its hero, paired screenshot gallery and text wrapping were reviewed. The full gallery images remain linked at original size.
+
+The full security audit uses a frozen source snapshot of the earlier baseline; normal remediation builds above are separate development checks. No adversarial Binder/deep-link test was run on a personal phone or deployed service. The audit's required isolated execution controls were unavailable; see [security notes](security.md).
+
+At release preparation, the previously connected phone is absent from ADB. The final in-app download/cancel/installer-handoff smoke test and installation of the GitHub-built APK therefore remain pending until it reconnects. Earlier device checks above remain historical evidence, not new 0.2.1 device results.
