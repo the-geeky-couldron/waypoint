@@ -16,7 +16,7 @@ Real-time GPS navigation with visual themes inspired by GTA V, Red Dead Redempti
 
 ## Users
 
-The user navigating real streets on an Android phone. This began as a private hobby app. The user now explicitly requests publication to the GitHub account signed in through Helium, GitHub Actions Android builds, an in-app updater and a marketing README. Repository visibility and the new GitHub CLI access grant are awaiting the user's answers; publication has not yet occurred.
+The user navigating real streets on an Android phone. This began as a private hobby app. The user now explicitly requests publication to the GitHub account signed in through Helium, GitHub Actions Android builds, an in-app updater and a marketing README. The user has chosen public open-source distribution at https://github.com/the-geeky-couldron/waypoint and completed GitHub CLI authorization through Helium. GitHub Actions builds the APK and publishes signed, versioned releases.
 
 ## Capabilities and Constraints
 
