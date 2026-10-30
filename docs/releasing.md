@@ -36,10 +36,10 @@ python3 scripts/check_version.py
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 # Example only: first change version.properties and release notes to match.
 git add version.properties docs/releases/current.md
-git commit -m "Release 0.2.1"
+git commit -m "Release 0.2.2"
 git push origin main
-git tag v0.2.1
-git push origin v0.2.1
+git tag v0.2.2
+git push origin v0.2.2
 ```
 
 Watch the Android workflow. Its release job verifies that the tag and version file agree. After publication, verify the APK and checksum on the release page. Never overwrite an already-published version: make a new version for corrections.

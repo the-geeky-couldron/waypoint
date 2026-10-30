@@ -1,5 +1,7 @@
 Real streets. Game worlds.
 
+First public Android release, built and signed by GitHub Actions.
+
 - 27 game-inspired map styles, including The Continent, Los Santos, Old West and Night City.
 - Real GPS navigation for car, motorcycle and walking, with spoken directions and route recalculation.
 - A native welcome screen, searchable world library and polished large-text/landscape layouts.
