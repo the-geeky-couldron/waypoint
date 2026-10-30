@@ -1,0 +1,32 @@
+/** Generate map lettering with the official MapLibre font-maker / FreeType WASM. */
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const root=path.resolve(__dirname,'..'),tool=path.join(root,'tools/glyph-generation');
+const fonts={
+ 'Waypoint Condensed':'roboto_condensed.ttf',
+ 'Waypoint Technical':'rajdhani.ttf',
+ 'Waypoint Pixel':'monocraft.ttf',
+ 'Waypoint Terminal':'share_tech_mono.ttf',
+ 'Waypoint Atlas':'libre_baskerville.ttf',
+ 'Waypoint Classic':'noto_sans.ttf'
+};
+(async()=>{
+ const mod={wasmBinary:fs.readFileSync(path.join(tool,'sdfglyph.wasm'))};
+ await new Promise((resolve,reject)=>{
+  mod.onRuntimeInitialized=resolve;mod.onAbort=reject;
+  vm.runInNewContext(fs.readFileSync(path.join(tool,'sdfglyph.cjs'),'utf8'),{Module:mod,require,process,console,__dirname:tool,Buffer,TextDecoder,TextEncoder,setTimeout,clearTimeout},{filename:'sdfglyph.cjs'});
+ });
+ const create=name=>{const bytes=Buffer.from(name+'\0');const ptr=mod._malloc(bytes.length);mod.HEAPU8.set(bytes,ptr);const stack=mod._create_fontstack(ptr);mod._free(ptr);return stack;};
+ for(const [name,file] of Object.entries(fonts)){
+  const stack=create(name),ptrs=[];
+  for(const f of [file,'noto_sans.ttf']){
+   const bytes=fs.readFileSync(path.join(root,'app/src/main/res/font',f));const ptr=mod._malloc(bytes.length);ptrs.push(ptr);mod.HEAPU8.set(bytes,ptr);mod._fontstack_add_face(stack,ptr,bytes.length);
+  }
+  const dir=path.join(root,'app/src/main/assets/glyphs',name);fs.mkdirSync(dir,{recursive:true});
+  // Other scripts retain provider Noto coverage through the native resolver.
+  for(const start of [0,256,512,768,1024,1280,1536,1792,2048,8192,8448]){
+   const buffer=mod._generate_glyph_buffer(stack,start),ptr=mod._glyph_buffer_data(buffer),len=mod._glyph_buffer_size(buffer);
+   fs.writeFileSync(path.join(dir,`${start}-${start+255}.pbf`),Buffer.from(mod.HEAPU8.slice(ptr,ptr+len)));mod._free_glyph_buffer(buffer);
+  }
+  mod._free_fontstack(stack);for(const p of ptrs)mod._free(p);console.log(name);
+ }
+})().catch(e=>{console.error(e);process.exitCode=1});

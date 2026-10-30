@@ -1,0 +1,34 @@
+"""Per-game map grammar: weight hierarchy, labels, building mass and material.
+Values reflect the reference map screens listed in docs/visual-sourcebook.md.
+"""
+def profile(road,case,building,labels,park,relief=0,paper=False):
+ return dict(road=road,case=case,building=building,labels=labels,park=park,relief=relief,paper=paper)
+PROFILES={
+'los_santos':profile(.85,.9,'flat',11,.65),
+'old_west':profile(.46,.55,'ink',12,.35,paper=True),
+'night_city':profile(.48,.4,'extrude',10,.3),
+'pixel':profile(.7,1.2,'pixel',12,1),
+'green_terminal':profile(.35,0,'outline',11,.12),
+'san_andreas':profile(1.3,1.1,'flat',12,1),
+'heat':profile(.7,.7,'flat',11,.75,.45),
+'rivia':profile(.45,.52,'ink',12,.7,.65,True),
+'vice_coast':profile(1.2,1.3,'flat',12,1),
+'liberty':profile(.75,.8,'flat',11,.45),
+'ctos':profile(1.15,.8,'flat',11,1),
+'hyrule':profile(.38,.3,'outline',11,.4,.75),
+'skyrim':profile(.3,.34,'hidden',12,.65,.9),
+'lands_between':profile(.42,.48,'ink',12,.8,.75,True),
+'horizon':profile(1.2,1.1,'flat',11,.9,.5),
+'assassin':profile(.4,.4,'flat',12,.65,.8),
+'far_cry':profile(.6,.6,'extrude',12,.85,.7),
+'ghost':profile(.3,.3,'ink',12,.3,.7,True),
+'bridges':profile(.3,.3,'outline',10,.35,.85),
+'horizon_wilds':profile(.4,.3,'flat',11,.85,.85),
+'spider':profile(.5,.6,'extrude',11,.6),
+'hogwarts':profile(.36,.5,'flat',12,.75,.8),
+'starfield':profile(.25,.2,'outline',10,.22,.7),
+'kingdom':profile(.5,.57,'ink',12,.75,.65,True),
+'saints':profile(.7,.7,'flat',11,.6),
+'just_cause':profile(.36,.4,'outline',11,.4,.7),
+'mafia':profile(.9,1,'flat',11,.8),
+}

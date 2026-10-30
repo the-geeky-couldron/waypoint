@@ -1,0 +1,29 @@
+package com.waypoint.app
+
+import org.json.JSONArray
+import org.json.JSONObject
+import org.junit.Assert.*
+import org.junit.Test
+
+class ReleaseUpdateTest {
+    private fun fixture(tag: String = "v0.2.0") = JSONObject().put("tag_name", tag).put("draft", false).put("prerelease", false)
+        .put("body", "New maps and fixes").put("assets", JSONArray().put(JSONObject().put("name", "Waypoint.apk").put("state", "uploaded")
+            .put("size", 54000000).put("digest", "sha256:" + "a".repeat(64))
+            .put("browser_download_url", "https://github.com/${ReleaseUpdate.REPOSITORY}/releases/download/$tag/Waypoint.apk")))
+    private fun rejects(json: JSONObject) { assertThrows(IllegalArgumentException::class.java) { ReleaseUpdate.parse(json.toString(), 1) } }
+    @Test fun readsVerifiedNewRelease() { val r = ReleaseUpdate.parse(fixture().toString(), 1)!!; assertEquals(2000, r.versionCode); assertEquals("0.2.0", r.version); assertEquals(54000000, r.size) }
+    @Test fun sameVersionIsNotAnUpdate() { assertNull(ReleaseUpdate.parse(fixture().toString(), 2000)) }
+    @Test fun olderVersionIsNotAnUpdate() { assertNull(ReleaseUpdate.parse(fixture().toString(), 3000)) }
+    @Test fun ignoresDrafts() { assertNull(ReleaseUpdate.parse(fixture().put("draft", true).toString(), 1)) }
+    @Test fun ignoresPrereleases() { assertNull(ReleaseUpdate.parse(fixture().put("prerelease", true).toString(), 1)) }
+    @Test fun rejectsNonVersionTag() { rejects(fixture("latest")) }
+    @Test fun rejectsBetaTags() { rejects(fixture("v0.3.0-beta")) }
+    @Test fun rejectsMissingApk() { rejects(fixture().put("assets", JSONArray())) }
+    @Test fun rejectsMissingChecksum() { val f=fixture();f.getJSONArray("assets").getJSONObject(0).remove("digest");rejects(f) }
+    @Test fun rejectsForeignDownload() { val f=fixture();f.getJSONArray("assets").getJSONObject(0).put("browser_download_url","https://evil.example/Waypoint.apk");rejects(f) }
+    @Test fun rejectsOversizeApk() { val f=fixture();f.getJSONArray("assets").getJSONObject(0).put("size",ReleaseUpdate.MAX_BYTES+1);rejects(f) }
+    @Test fun rejectsDuplicateApks() { val f=fixture();f.getJSONArray("assets").put(f.getJSONArray("assets").getJSONObject(0));rejects(f) }
+    @Test fun versionOrderingIsNumeric() { assertTrue(ReleaseUpdate.versionCode("0.10.0")!! > ReleaseUpdate.versionCode("0.9.99")!!);assertEquals(1002003,ReleaseUpdate.versionCode("1.2.3")) }
+    @Test fun rejectsAmbiguousVersions() { listOf("01.2.3","1.1000.0","1.0","-1.0.0","1.0.0+2").forEach { assertNull(ReleaseUpdate.versionCode(it)) } }
+    @Test fun restrictsDownloadRedirects() { assertTrue(ReleaseUpdate.trustedDownloadHost("https://release-assets.githubusercontent.com/file"));listOf("http://github.com/a","https://github.com.evil.test/a","https://github.com:444/a","https://user@github.com/a").forEach { assertFalse(ReleaseUpdate.trustedDownloadHost(it)) } }
+}

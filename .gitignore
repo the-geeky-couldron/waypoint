@@ -1,0 +1,20 @@
+.gradle/
+.idea/
+.tooling/
+local.properties
+**/build/
+*.iml
+.DS_Store
+.impeccable/review/
+
+**/node_modules/
+
+dist/
+
+# Never publish signing identities or local credentials.
+*.keystore
+*.jks
+.env
+.env.*
+*.pem
+*.p12
