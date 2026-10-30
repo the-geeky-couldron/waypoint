@@ -92,7 +92,7 @@ Normal development verification after remediation:
 - All **27 map styles** pass the official style validator. Version metadata passes the release-version check.
 - Debug instrumentation APK compiles. New read-only tests are ready to check the installed package's disabled/private car component, private update provider, backup and cleartext policy; they have not yet run on a reconnected phone.
 - Packaged debug/release manifest checks pass and are now CI gates. The car service is disabled and non-exported; the release is not debuggable. This verifies build output, not cross-UID exploit behavior.
-- [GitHub Actions on the remediation commit](https://github.com/the-geeky-couldron/waypoint/actions/runs/41071298018) passed Android SDK setup, the debug build, unit tests, lint, map styles and the packaged-component gate.
+- The historical remediation workflow passed Android SDK setup, the debug build, unit tests, lint, map styles and the packaged-component gate. Its superseded run was retired during the public-history privacy cleanup.
 - The README was rendered through GitHub's Markdown renderer and visually inspected in Helium at desktop width and in a 390px iframe. Its hero, paired screenshot gallery and text wrapping were reviewed. The full gallery images remain linked at original size.
 
 The completed standard security audit accounts for 31 coverage units and six independently verified needs-validation records, with no runtime-confirmed exploit. Both audit schema/coverage validators pass. It uses a frozen source snapshot of the earlier baseline; normal remediation builds above are separate development checks. No adversarial Binder/deep-link test was run on a personal phone or deployed service. The audit's required isolated execution controls were unavailable; see [security notes](security.md).
@@ -126,4 +126,12 @@ Native captures and device logs stay under ignored `.tooling/` / `.impeccable/re
 - Promotional artwork is composed from existing, sanitised native London demo captures and the original adaptive icon. All public image files were checked for EXIF/GPS metadata; none is present.
 - GitHub's Markdown renderer preserves the responsive picture sources. Browser captures at **1280px desktop and 390px mobile** show loaded images, dedicated mobile compositions, and no document-level horizontal overflow. Code blocks retain their normal internal scrolling.
 
-Public release descriptions use neutral feature descriptions. The current source tree is checked for private sample queries, device identifiers and local account paths. The affected earlier commit and release are being superseded by the cleaned release history. Copies already downloaded or cached elsewhere cannot be recalled.
+Public release descriptions use neutral feature descriptions. The current source tree is checked for private sample queries, device identifiers and local account paths. The affected earlier commit and release were replaced with cleaned public history. Author, committer and annotated-tag identities use the public GitHub handle and no-reply email. A fresh remote clone verifies the rewritten history and identical file trees. Copies already downloaded or cached elsewhere cannot be recalled.
+
+## Published APK and updater verification (0.2.3)
+
+- The [tagged GitHub Actions workflow](https://github.com/the-geeky-couldron/waypoint/actions/runs/41098264439) passed the debug verification job and signed release build, including unit tests, lint and packaged-component checks. It published the APK and checksum file to [v0.2.3](https://github.com/the-geeky-couldron/waypoint/releases/tag/v0.2.3).
+- The downloaded APK's SHA-256 matches both GitHub's asset digest and `SHA256SUMS`. Its package, version, non-debuggable release flag and existing signing identity were independently checked.
+- A connected-device test on the previous signed release passed the live update flow: discovery, download cancellation, re-download, signature verification and handoff to Android's installer. The partial download file was absent after verification.
+- After installing the verified GitHub APK, a second device test confirmed the installed version and manual update check. The screen reported **Waypoint 0.2.3** and **You're up to date**.
+- The installed APK was read back and its hash matched the downloaded GitHub artifact. The test package was removed and normal device sleep restored. These two additional updater checks do not expand the real-road or endurance coverage described above.

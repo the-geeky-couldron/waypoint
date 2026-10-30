@@ -132,7 +132,7 @@ No map API key is required for the included evaluation services. Local debug bui
 
 GitHub Actions builds the app, runs unit tests and lint, and validates all 27 map styles on pushes and pull requests. Debug APKs and reports are saved as workflow artifacts.
 
-A version tag such as `v0.2.2` runs the checks again, builds a signed release and publishes **Waypoint.apk** and **SHA256SUMS**. The in-app updater reads that release. Versions live in [`version.properties`](version.properties); signing and publishing are covered in the [release guide](docs/releasing.md).
+A version tag such as `v0.2.3` runs the checks again, builds a signed release and publishes **Waypoint.apk** and **SHA256SUMS**. The in-app updater reads that release. Versions live in [`version.properties`](version.properties); signing and publishing are covered in the [release guide](docs/releasing.md).
 
 The promotional posters are reproducible with `python3 scripts/create_readme_promo.py` using Pillow, the repository’s licensed fonts, and sanitised app screenshots. The posters contain no original game artwork. See [the artwork notes](docs/images/promo/README.md).
 
