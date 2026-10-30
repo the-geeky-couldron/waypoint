@@ -4,6 +4,12 @@ Waypoint 0.2.1 includes a source audit of the Android app and release path, foll
 
 The audit used independent source reviewers and candidate verification. **No exploit was demonstrated on an Android runtime.** The required isolated execution environment was unavailable, so cross-app delivery, process failure and data access hypotheses remain validation leads rather than confirmed vulnerabilities. Normal development builds and regression checks are reported separately in [validation](validation.md).
 
+## Review outcome
+
+The completed review accounted for **31 coverage units** across five hunting waves and a separate final coverage check. Six source-grounded leads passed both candidate and final-record verification: two destination-import leads and four car-service leads. There are **no runtime-confirmed exploits** and no assigned severity. The two app-level paths were fixed; the four car paths are contained by disabling the component.
+
+Two baseline coverage gaps remain explicit: the original CI cache defaults/ref scoping and the complete packaged/runtime class inventory reachable by the car decoder. The release now disables signing-job caches and the car component. Neither change retroactively proves the baseline safe or exploited. Full traces stay in the local audit report; this public note records the fixes and limits.
+
 ## Changes in this release
 
 | Boundary | Source concern | Remediation |

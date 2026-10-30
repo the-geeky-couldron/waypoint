@@ -30,16 +30,16 @@ Distinct typography, road treatments, palettes, pointers and control layouts. Fa
 
 <table>
   <tr>
-    <td width="50%" align="center"><sub>Grand Theft Auto V</sub><br /><h3>LOS SANTOS</h3><a href="docs/images/los-santos.jpg"><img src="docs/images/los-santos.jpg" alt="LOS SANTOS: A charcoal street grid, bold lettering and familiar city-map controls. Fixed London demonstration." width="360" /></a><p>A charcoal street grid, bold lettering and familiar city-map controls.</p></td>
-    <td width="50%" align="center"><sub>Red Dead Redemption 2</sub><br /><h3>OLD WEST</h3><a href="docs/images/old-west.jpg"><img src="docs/images/old-west.jpg" alt="OLD WEST: Parchment streets, frontier lettering and a western compass. Fixed London demonstration." width="360" /></a><p>Parchment streets, frontier lettering and a western compass.</p></td>
+    <td width="50%" align="center" valign="top"><sub>Grand Theft Auto V</sub><br /><h3>LOS SANTOS</h3><a href="docs/images/los-santos.jpg"><img src="docs/images/los-santos.jpg" alt="LOS SANTOS: A charcoal street grid, bold lettering and familiar city-map controls. Fixed London demonstration." width="360" /></a><p>A charcoal street grid, bold lettering and familiar city-map controls.</p></td>
+    <td width="50%" align="center" valign="top"><sub>Red Dead Redemption 2</sub><br /><h3>OLD WEST</h3><a href="docs/images/old-west.jpg"><img src="docs/images/old-west.jpg" alt="OLD WEST: Parchment streets, frontier lettering and a western compass. Fixed London demonstration." width="360" /></a><p>Parchment streets, frontier lettering and a western compass.</p></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><sub>Cyberpunk 2077</sub><br /><h3>NIGHT CITY</h3><a href="docs/images/night-city.jpg"><img src="docs/images/night-city.jpg" alt="NIGHT CITY: Neon roads, architectural depth and a technical HUD. Fixed London demonstration." width="360" /></a><p>Neon roads, architectural depth and a technical HUD.</p></td>
-    <td width="50%" align="center"><sub>The Witcher 3</sub><br /><h3>THE CONTINENT</h3><a href="docs/images/rivia.jpg"><img src="docs/images/rivia.jpg" alt="THE CONTINENT: A muted fantasy atlas with serif lettering and gold details. Fixed London demonstration." width="360" /></a><p>A muted fantasy atlas with serif lettering and gold details.</p></td>
+    <td width="50%" align="center" valign="top"><sub>Cyberpunk 2077</sub><br /><h3>NIGHT CITY</h3><a href="docs/images/night-city.jpg"><img src="docs/images/night-city.jpg" alt="NIGHT CITY: Neon roads, architectural depth and a technical HUD. Fixed London demonstration." width="360" /></a><p>Neon roads, architectural depth and a technical HUD.</p></td>
+    <td width="50%" align="center" valign="top"><sub>The Witcher 3</sub><br /><h3>THE CONTINENT</h3><a href="docs/images/rivia.jpg"><img src="docs/images/rivia.jpg" alt="THE CONTINENT: A muted fantasy atlas with serif lettering and gold details. Fixed London demonstration." width="360" /></a><p>A muted fantasy atlas with serif lettering and gold details.</p></td>
   </tr>
   <tr>
-    <td width="50%" align="center"><sub>The Legend of Zelda: Breath of the Wild</sub><br /><h3>SHEIKAH SLATE</h3><a href="docs/images/hyrule.jpg"><img src="docs/images/hyrule.jpg" alt="SHEIKAH SLATE: Blue slate, geometric framing and an adventure-map palette. Fixed London demonstration." width="360" /></a><p>Blue slate, geometric framing and an adventure-map palette.</p></td>
-    <td width="50%" align="center"><sub>Minecraft</sub><br /><h3>PIXEL WORLD</h3><a href="docs/images/pixel.jpg"><img src="docs/images/pixel.jpg" alt="PIXEL WORLD: Pixel lettering, block-inspired materials and a hotbar layout. Fixed London demonstration." width="360" /></a><p>Pixel lettering, block-inspired materials and a hotbar layout.</p></td>
+    <td width="50%" align="center" valign="top"><sub>The Legend of Zelda: Breath of the Wild</sub><br /><h3>SHEIKAH SLATE</h3><a href="docs/images/hyrule.jpg"><img src="docs/images/hyrule.jpg" alt="SHEIKAH SLATE: Blue slate, geometric framing and an adventure-map palette. Fixed London demonstration." width="360" /></a><p>Blue slate, geometric framing and an adventure-map palette.</p></td>
+    <td width="50%" align="center" valign="top"><sub>Minecraft</sub><br /><h3>PIXEL WORLD</h3><a href="docs/images/pixel.jpg"><img src="docs/images/pixel.jpg" alt="PIXEL WORLD: Pixel lettering, block-inspired materials and a hotbar layout. Fixed London demonstration." width="360" /></a><p>Pixel lettering, block-inspired materials and a hotbar layout.</p></td>
   </tr>
 </table>
 
@@ -84,9 +84,9 @@ Distinct typography, road treatments, palettes, pointers and control layouts. Fa
 
 <table>
   <tr>
-    <td align="center"><img src="docs/images/welcome.jpg" alt="Waypoint welcome screen with The Continent selected and the Open map button" width="250" /><br /><strong>A world before a route</strong><br />Pick your atmosphere, then open the map.</td>
-    <td align="center"><img src="docs/images/library.jpg" alt="Searchable game world library with large map-style names and smaller game titles" width="250" /><br /><strong>Find your favourite</strong><br />Search the library by game or map style.</td>
-    <td align="center"><img src="docs/images/updates.jpg" alt="App updates panel with the installed version, Check for updates and release notes" width="250" /><br /><strong>Keep moving forward</strong><br />Download verified updates from Settings.</td>
+    <td align="center" valign="top"><img src="docs/images/welcome.jpg" alt="Waypoint welcome screen with The Continent selected and the Open map button" width="250" /><br /><strong>A world before a route</strong><br />Pick your atmosphere, then open the map.</td>
+    <td align="center" valign="top"><img src="docs/images/library.jpg" alt="Searchable game world library with large map-style names and smaller game titles" width="250" /><br /><strong>Find your favourite</strong><br />Search the library by game or map style.</td>
+    <td align="center" valign="top"><img src="docs/images/updates.jpg" alt="App updates panel with the installed version, Check for updates and release notes" width="250" /><br /><strong>Keep moving forward</strong><br />Download verified updates from Settings.</td>
   </tr>
 </table>
 

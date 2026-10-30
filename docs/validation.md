@@ -53,9 +53,9 @@ Native captures in `.impeccable/review/` contain the user's local geography and 
 - A native welcome screen offers world selection and Open map. Map rendering is deferred until entry; active navigation and external destination links retain their own entry behavior.
 - Preview thumbnails batch their geometry into cached paths. The native map renderer and its camera/marker work pause behind lists and sheets. Sensor readings remain current in the arbiter while hidden screens avoid heading-driven state emissions.
 - All 27 HUD palette foreground, accent and secondary pairs were checked against their alpha-composited panels over black and white underlays; minimum tested ratio was 6.14:1. This does not measure every label drawn directly over terrain.
-- R8/resource shrinking is enabled for the private release build. The existing development signing identity is retained so updating does not erase saved places. Release APKs are private artifacts, not a public-store release.
+- R8/resource shrinking was enabled for the original private release build. The existing signing identity is retained for compatible upgrades. Later releases use the public GitHub distribution described below; no public-store release is claimed.
 
-## Final private release verification
+## Historical private release verification (0.1.x)
 
 The optimized release installed on the phone passed all 45 unit tests and Android lint with zero errors (35 warnings). The 27 styles also pass the official validator. Four connected-device test flows passed across the final targeted runs:
 
@@ -78,7 +78,7 @@ The independent verdict pass returned **ship** for this scored route-preview fix
 
 The new updater and release preparation pass 60 unit tests (the existing 45 plus 15 release-parser cases), with zero failures, and Android lint with zero errors (37 warnings). All 27 map styles still validate. Device tests captured six worlds at explicit demonstration coordinates, the welcome/library, and the updater. `UpdateUiTest` exercised Settings, the installed version, a manual live GitHub check, the not-yet-published release error and retry control, then Back. These checks passed; private status bars were cropped out of published README images.
 
-The GitHub Actions workflow and public update channel are prepared locally. Repository creation, encrypted signing-secret setup, a live Actions run, release download and installation testing are pending the user's repository-visibility answer and GitHub CLI authorization. Download/ready states are currently source-reviewed, not a claimed end-to-end release-update pass.
+At the time of the 0.2.0 preparation checks, repository creation, signing-secret setup and live release testing were pending. That is a historical checkpoint: the repository is now public, GitHub CLI authorization and encrypted signing-secret setup are complete, and the corrected workflow passes. The current release and device-validation status appears below.
 
 The independent UI review accepted the captured README and native updater idle/error layouts. Its single material fix was stale private-only product context; the verdict pass marked that documentation fix **ship**. This verdict does not certify the still-pending GitHub release or download/installation path. The locally built 0.2.0 APK is installed on the connected phone, with its installed SHA-256 verified against the packaged file.
 
@@ -90,10 +90,11 @@ Normal development verification after remediation:
 - Both variants pass **82 unit tests**, with zero failures, errors or skips. Added cases cover destination parsing/import generations, strict JSON nesting and value limits, invalid provider fields, redirect rejection, oversized known-length/chunked/gzip responses, geometry limits and request cancellation.
 - Android lint reports **0 errors and 35 warnings** for each variant. Warnings remain; this is not a warning-free build claim.
 - All **27 map styles** pass the official style validator. Version metadata passes the release-version check.
-- Debug instrumentation APK compiles. New read-only installed-package tests check the disabled/private car component, private update provider, backup and cleartext policy.
+- Debug instrumentation APK compiles. New read-only tests are ready to check the installed package's disabled/private car component, private update provider, backup and cleartext policy; they have not yet run on a reconnected phone.
 - Packaged debug/release manifest checks pass and are now CI gates. The car service is disabled and non-exported; the release is not debuggable. This verifies build output, not cross-UID exploit behavior.
+- [GitHub Actions on the remediation commit](https://github.com/the-geeky-couldron/waypoint/actions/runs/41071298018) passed Android SDK setup, the debug build, unit tests, lint, map styles and the packaged-component gate.
 - The README was rendered through GitHub's Markdown renderer and visually inspected in Helium at desktop width and in a 390px iframe. Its hero, paired screenshot gallery and text wrapping were reviewed. The full gallery images remain linked at original size.
 
-The full security audit uses a frozen source snapshot of the earlier baseline; normal remediation builds above are separate development checks. No adversarial Binder/deep-link test was run on a personal phone or deployed service. The audit's required isolated execution controls were unavailable; see [security notes](security.md).
+The completed standard security audit accounts for 31 coverage units and six independently verified needs-validation records, with no runtime-confirmed exploit. Both audit schema/coverage validators pass. It uses a frozen source snapshot of the earlier baseline; normal remediation builds above are separate development checks. No adversarial Binder/deep-link test was run on a personal phone or deployed service. The audit's required isolated execution controls were unavailable; see [security notes](security.md).
 
 At release preparation, the previously connected phone is absent from ADB. The final in-app download/cancel/installer-handoff smoke test and installation of the GitHub-built APK therefore remain pending until it reconnects. Earlier device checks above remain historical evidence, not new 0.2.1 device results.
