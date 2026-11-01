@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -87,6 +89,7 @@ fun hudBorder(world:World):BorderStroke?=when(world) {
     else->null
 }
 fun hudFont(world:World):FontFamily=when(world) {
+    World.OLD_WEST->WesternFont
     World.PIXEL->PixelFont
     World.GREEN_TERMINAL->PipBoyFont
     World.NIGHT_CITY,World.BRIDGES,World.SPIDER,World.STARFIELD->TechnicalFont
@@ -292,6 +295,7 @@ fun World.inspiration()=when(this) {
                     Text("CHOOSE A WORLD",fontFamily=DisplayFont,fontWeight=FontWeight.Bold,fontSize=32.sp,lineHeight=38.sp,modifier=Modifier.weight(1f))
                 }
                 Text("${World.entries.size} maps, controls and guidance themes.\nEvery theme included.",fontSize=14.sp,lineHeight=19.sp,color=Muted)
+                Text("OpenFreeMap © OpenMapTiles · Data from OpenStreetMap",fontSize=10.sp,lineHeight=14.sp,color=Muted)
                 OutlinedTextField(value=query,onValueChange={query=it},label={Text("Find a game")},leadingIcon={Icon(Icons.Default.Search,null)},singleLine=true,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(4.dp))
             }
         }
@@ -301,7 +305,8 @@ fun World.inspiration()=when(this) {
             Surface(onClick={onSelect(world)},modifier=Modifier.semantics{contentDescription="Apply ${world.title} theme"},color=Panel,shape=RoundedCornerShape(4.dp),border=if(selected==world)BorderStroke(2.dp,p.accent) else null) {
                 Column {
                     Box(Modifier.fillMaxWidth().height(170.dp)) {
-                        MapSwatch(world,Modifier.fillMaxSize())
+                        Image(painterResource(world.previewImage()),null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
+                        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color.Black.copy(alpha=.04f),.68f to Color.Transparent,1f to Color.Black.copy(alpha=.18f))))
                         Surface(color=p.panel,shape=hudShape(world),border=hudBorder(world),modifier=Modifier.align(Alignment.TopStart).padding(12.dp)) {
                             Column(Modifier.padding(horizontal=12.dp,vertical=8.dp)) {
                                 Text(world.title,fontFamily=hudFont(world),fontSize=22.sp,lineHeight=28.sp,maxLines=2,overflow=TextOverflow.Ellipsis,color=p.foreground)
@@ -318,7 +323,11 @@ fun World.inspiration()=when(this) {
                         }
                     }
                     Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                        Text(world.description,fontSize=13.sp,lineHeight=19.sp,color=Muted,modifier=Modifier.weight(1f));Icon(Icons.AutoMirrored.Filled.ArrowForward,null,tint=p.accent,modifier=Modifier.size(20.dp))
+                        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
+                            Text(world.previewPlace().label,fontSize=11.sp,lineHeight=14.sp,color=p.accent,maxLines=1,overflow=TextOverflow.Ellipsis)
+                            Text(world.description,fontSize=13.sp,lineHeight=19.sp,color=Muted)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward,null,tint=p.accent,modifier=Modifier.size(20.dp))
                     }
                 }
             }

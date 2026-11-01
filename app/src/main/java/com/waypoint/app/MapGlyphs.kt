@@ -8,7 +8,7 @@ import org.maplibre.android.module.http.HttpRequestUtil
 
 /** Custom map glyphs use the same fonts as their HUD, with provider coverage for other scripts. */
 internal object MapGlyphs {
-    private val names=setOf("Waypoint Condensed","Waypoint Technical","Waypoint Pixel","Waypoint Terminal","Waypoint Atlas","Waypoint Classic")
+    private val names=setOf("Waypoint Condensed","Waypoint Technical","Waypoint Pixel","Waypoint Terminal","Waypoint Atlas","Waypoint Classic","Waypoint Western")
     fun install(context:Context) {
         org.maplibre.android.MapLibre.getInstance(context)
         HttpRequestUtil.setOkHttpClient(OkHttpClient.Builder().addInterceptor { chain ->
@@ -27,7 +27,8 @@ internal object MapGlyphs {
 internal fun World.mapFontName()=when(this) {
     World.NIGHT_CITY,World.BRIDGES,World.SPIDER,World.STARFIELD,World.JUST_CAUSE->"Waypoint Technical"
     World.PIXEL->"Waypoint Pixel"
-    World.OLD_WEST,World.RIVIA,World.LANDS_BETWEEN,World.KINGDOM,World.HOGWARTS,World.MAFIA->"Waypoint Atlas"
+    World.OLD_WEST->"Waypoint Western"
+    World.RIVIA,World.LANDS_BETWEEN,World.KINGDOM,World.HOGWARTS,World.MAFIA->"Waypoint Atlas"
     World.LOS_SANTOS,World.GREEN_TERMINAL,World.SKYRIM,World.SAN_ANDREAS,World.LIBERTY,World.HEAT,World.FAR_CRY->"Waypoint Condensed"
     else->"Waypoint Classic"
 }

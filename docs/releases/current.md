@@ -1,16 +1,15 @@
-A new look for the project, with personal examples kept private.
-
-Waypoint 0.2.3 adds a visual product showcase and keeps device-specific spelling aliases in private app preferences. No personal search examples are bundled in new builds or used in public regression fixtures.
+Waypoint 1.0.0-r1 is the official GitHub debut.
 
 ### What changed
 
-- Original promotional artwork shows six real game-inspired maps, with separate compositions for desktop and mobile readers.
-- The README now has a clear download section, a world gallery, navigation features and concise installation instructions.
-- Search spelling aliases are device-local; fuzzy matching and the provider fallback remain available to everyone.
-- Public search tests use fictional examples or fixed public demonstration landmarks. Release notes use neutral descriptions.
+- A cinematic first-run journey leads from the landing screen through favorite games to a rotating, themed Earth globe. The globe starts on a world the user selected as a favorite.
+- Existing installations see this new landing journey once after upgrading to the debut version. Their saved places and map preferences remain available.
+- All 27 game-inspired map styles are included, with real Indian street previews in the world gallery and a Kolkata preview when location is unavailable.
+- Original game-inspired gallery illustrations, onboarding stickers, map controls and location markers make the worlds distinct while keeping the map readable.
+- Western and GTA themed titles use the project's licensed game typefaces; Western street labels use matching local MapLibre glyphs.
+- Locate returns to the user's current position at street zoom, even after zooming out or opening a route preview.
+- Reddit, GitHub and Telegram appear among the referral choices. The app is free and has no paywall.
 
 ### Install
 
-Download **Waypoint.apk**, or open **Settings → App updates**. Compatible updates preserve your saved places and preferences.
-
-This release retains the 0.2.2 live-location, centred-camera, route-progress and automatic-rerouting fixes, plus the adaptive Material You launcher icon. All 27 game worlds are included. Maps and routes require internet access; Android Auto remains disabled. Controlled checks do not replace real-road and battery-endurance validation.
+Download **Waypoint.apk** from this GitHub release, or use **Settings → App updates** in an older installed version. Android asks you to confirm installation. Maps, search and routes require internet access.

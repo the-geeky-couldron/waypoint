@@ -49,12 +49,16 @@ internal fun mapPlayer(world:World):Bitmap {
     return b
 }
 internal fun mapPoi(context:Context,kind:String,world:World):Bitmap {
-    if(world.mapArt().marker==MarkerArt.PIXEL) return BitmapFactory.decodeResource(context.resources,when(kind){"food","cafe"->R.drawable.pixel_food;"stay"->R.drawable.pixel_stay;else->R.drawable.pixel_place})
+    if(world.mapArt().marker==MarkerArt.PIXEL && kind in setOf("food","stay"))
+        return BitmapFactory.decodeResource(context.resources,if(kind=="food")R.drawable.pixel_food else R.drawable.pixel_stay)
     val b=Bitmap.createBitmap(64,64,Bitmap.Config.ARGB_8888);val c=Canvas(b);val p=Paint(Paint.ANTI_ALIAS_FLAG);val art=world.mapArt().marker
     val accent=world.markerInk();p.color=color("#10191D")
     when(art){
+        MarkerArt.PHOSPHOR->{p.color=color("#07160A");c.drawRoundRect(5f,5f,59f,59f,5f,5f,p);p.color=accent;p.style=Paint.Style.STROKE;p.strokeWidth=2.5f;c.drawRoundRect(5f,5f,59f,59f,5f,5f,p)}
+        MarkerArt.SILHOUETTE,MarkerArt.SILVER->{p.color=color("#141C1D");c.drawCircle(32f,32f,27f,p);p.color=accent;p.style=Paint.Style.STROKE;p.strokeWidth=2.5f;c.drawCircle(32f,32f,27f,p)}
         MarkerArt.INK->{c.drawCircle(32f,32f,27f,p);p.color=color("#E9DCBA");p.style=Paint.Style.STROKE;p.strokeWidth=2f;c.drawCircle(32f,32f,27f,p)}
-        MarkerArt.PASTEL,MarkerArt.RACING->{p.color=when(kind){"food"->color(if(world==World.HORIZON)"#BC197B" else "#387C50");"cafe"->color("#D98C29");"stay"->color("#3B83A9");else->color("#337C98")};c.drawRoundRect(5f,5f,59f,59f,if(art==MarkerArt.RACING)2f else 10f,if(art==MarkerArt.RACING)2f else 10f,p);p.color=Color.WHITE;p.style=Paint.Style.STROKE;p.strokeWidth=3f;c.drawRoundRect(5f,5f,59f,59f,2f,2f,p)}
+        MarkerArt.PASTEL,MarkerArt.RACING->{p.color=when(kind){"food"->color(if(world==World.HORIZON)"#BC197B" else "#387C50");"cafe"->color("#D98C29");"pub"->color("#AA6129");"stay"->color("#3B83A9");"shop"->color("#A35276");"sights"->color("#6657A8");"nature"->color("#427F50");"health"->color("#B15354");"cash"->color("#438E88");else->color("#337C98")};c.drawRoundRect(5f,5f,59f,59f,if(art==MarkerArt.RACING)2f else 10f,if(art==MarkerArt.RACING)2f else 10f,p);p.color=Color.WHITE;p.style=Paint.Style.STROKE;p.strokeWidth=3f;c.drawRoundRect(5f,5f,59f,59f,2f,2f,p)}
+        MarkerArt.PIXEL->{p.isAntiAlias=false;p.color=color("#263226");c.drawRect(5f,5f,59f,59f,p);p.color=color("#B5C7A8");p.style=Paint.Style.STROKE;p.strokeWidth=4f;c.drawRect(5f,5f,59f,59f,p)}
         MarkerArt.GOLD->{p.color=color("#4C452D");c.drawCircle(32f,32f,25f,p);p.color=accent;p.style=Paint.Style.STROKE;p.strokeWidth=3f;c.drawCircle(32f,32f,25f,p);c.drawCircle(32f,32f,29f,p)}
         MarkerArt.TECH,MarkerArt.SHEIKAH,MarkerArt.DIAMOND,MarkerArt.SURVEY->{val path=Path().apply{moveTo(32f,2f);lineTo(62f,32f);lineTo(32f,62f);lineTo(2f,32f);close()};c.drawPath(path,p);p.color=if(art==MarkerArt.DIAMOND)color(world.routeColor) else accent;p.style=Paint.Style.STROKE;p.strokeWidth=2f;c.drawPath(path,p)}
         else->Unit
@@ -66,11 +70,17 @@ internal fun mapPoi(context:Context,kind:String,world:World):Bitmap {
         "stay"->{glyph.moveTo(16f,19f);glyph.lineTo(16f,46f);glyph.moveTo(48f,26f);glyph.lineTo(48f,46f);glyph.addRect(16f,29f,48f,40f,Path.Direction.CW);glyph.addRect(19f,22f,29f,29f,Path.Direction.CW)}
         "fuel"->{glyph.addRect(18f,16f,36f,45f,Path.Direction.CW);glyph.addRect(21f,20f,33f,29f,Path.Direction.CW);glyph.moveTo(36f,30f);glyph.lineTo(44f,30f);glyph.lineTo(44f,42f);glyph.lineTo(49f,42f);glyph.lineTo(49f,24f);glyph.lineTo(43f,18f)}
         "parking"->{glyph.moveTo(24f,47f);glyph.lineTo(24f,17f);glyph.lineTo(42f,17f);glyph.lineTo(42f,33f);glyph.lineTo(24f,33f)}
+        "pub"->{glyph.moveTo(18f,20f);glyph.lineTo(43f,20f);glyph.lineTo(39f,47f);glyph.lineTo(23f,47f);glyph.close();glyph.moveTo(19f,25f);glyph.lineTo(42f,25f);glyph.moveTo(44f,23f);glyph.lineTo(50f,23f);glyph.lineTo(48f,38f);glyph.lineTo(41f,38f)}
+        "shop"->{glyph.addRect(18f,26f,46f,48f,Path.Direction.CW);glyph.moveTo(24f,27f);glyph.lineTo(24f,21f);glyph.lineTo(28f,16f);glyph.lineTo(36f,16f);glyph.lineTo(40f,21f);glyph.lineTo(40f,27f)}
+        "sights"->{for(i in 0 until 10){val a=i*Math.PI/5;val radius=if(i%2==0)19f else 9f;val x=32f+radius*kotlin.math.sin(a).toFloat();val y=32f-radius*kotlin.math.cos(a).toFloat();if(i==0)glyph.moveTo(x,y) else glyph.lineTo(x,y)};glyph.close()}
+        "health"->{glyph.moveTo(26f,15f);glyph.lineTo(38f,15f);glyph.lineTo(38f,26f);glyph.lineTo(49f,26f);glyph.lineTo(49f,38f);glyph.lineTo(38f,38f);glyph.lineTo(38f,49f);glyph.lineTo(26f,49f);glyph.lineTo(26f,38f);glyph.lineTo(15f,38f);glyph.lineTo(15f,26f);glyph.lineTo(26f,26f);glyph.close()}
+        "nature"->{glyph.moveTo(32f,15f);glyph.lineTo(47f,38f);glyph.lineTo(17f,38f);glyph.close();glyph.moveTo(32f,38f);glyph.lineTo(32f,49f)}
+        "cash"->{glyph.addCircle(32f,32f,18f,Path.Direction.CW);glyph.moveTo(39f,23f);glyph.lineTo(27f,23f);glyph.lineTo(24f,29f);glyph.lineTo(39f,35f);glyph.lineTo(36f,41f);glyph.lineTo(24f,41f);glyph.moveTo(32f,18f);glyph.lineTo(32f,46f)}
         else->{glyph.moveTo(15f,29f);glyph.lineTo(32f,14f);glyph.lineTo(49f,29f);glyph.moveTo(20f,28f);glyph.lineTo(20f,47f);glyph.lineTo(44f,47f);glyph.lineTo(44f,28f);glyph.addRect(28f,36f,36f,47f,Path.Direction.CW)}
     }
     p.style=Paint.Style.STROKE;p.strokeCap=Paint.Cap.SQUARE;p.strokeJoin=Paint.Join.MITER
     if(art in listOf(MarkerArt.SILHOUETTE,MarkerArt.SILVER)){p.color=Color.BLACK;p.strokeWidth=7f;c.drawPath(glyph,p)}
-    p.color=accent;p.strokeWidth=3.3f;c.drawPath(glyph,p)
+    p.color=accent;p.strokeWidth=if(art==MarkerArt.PIXEL)4.5f else 3.3f;c.drawPath(glyph,p)
     return b
 }
 internal fun mapDestination(world:World):Bitmap {

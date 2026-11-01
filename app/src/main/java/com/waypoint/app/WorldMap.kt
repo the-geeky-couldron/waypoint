@@ -32,7 +32,7 @@ import org.maplibre.android.style.expressions.Expression.*
 data class MapViewportInsets(val left:Int,val top:Int,val right:Int,val bottom:Int)
 
 @Composable
-fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit, modifier: Modifier=Modifier,active:Boolean=true,routeInsets:MapViewportInsets?=null,onBearing:(Float)->Unit={}) {
+fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit, modifier: Modifier=Modifier,active:Boolean=true,routeInsets:MapViewportInsets?=null,onBearing:(Float)->Unit={},cameraZoomOverride:Double?=null,cameraTiltOverride:Double?=null,styleFileOverride:String?=null,cameraCenterOverride:Coordinate?=null) {
     val context=LocalContext.current
     val owner=LocalLifecycleOwner.current
     val currentState by rememberUpdatedState(state)
@@ -51,6 +51,7 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
     val renderedBearing=remember{floatArrayOf(0f)}
     val pointerAnimator=remember{arrayOfNulls<ValueAnimator>(1)}
     val positionAnimator=remember{arrayOfNulls<ValueAnimator>(1)}
+    val globeAnimator=remember(mapView){arrayOfNulls<ValueAnimator>(1)}
     val renderedPosition=remember{arrayOfNulls<Coordinate>(1)}
     val styleEpoch=remember{intArrayOf(0)}
     val renderLifecycle=remember(mapView){MapRenderLifecycle(mapView)}
@@ -61,6 +62,42 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
         onDispose {styleEpoch[0]++;positionAnimator[0]?.cancel();pointerAnimator[0]?.cancel();owner.lifecycle.removeObserver(observer);renderLifecycle.destroy()}
     }
     LaunchedEffect(active) {renderLifecycle.update(owner.lifecycle.currentState,active)}
+    DisposableEffect(map,owner,active,styleReady,cameraZoomOverride,cameraTiltOverride,cameraCenterOverride) {
+        fun syncGlobeRotation() {
+            val targetMap=map
+            val shouldRotate=targetMap!=null && active && styleReady>0 && cameraZoomOverride!=null &&
+                owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && ValueAnimator.areAnimatorsEnabled()
+            if(!shouldRotate) {
+                globeAnimator[0]?.cancel();globeAnimator[0]=null
+                return
+            }
+            if(globeAnimator[0]?.isRunning==true)return
+            val current=requireNotNull(targetMap)
+            val camera=current.cameraPosition
+            val target=cameraCenterOverride?.latLng() ?: camera.target ?: PreviewCenter.latLng()
+            val latitude=target.latitude
+            val longitude=target.longitude
+            globeAnimator[0]=ValueAnimator.ofFloat(0f,360f).apply {
+                duration=72000;repeatCount=ValueAnimator.INFINITE;interpolator=LinearInterpolator()
+                addUpdateListener { frame ->
+                    if(!active || styleReady==0)return@addUpdateListener
+                    val rotated=((longitude+(frame.animatedValue as Float)+180.0)%360.0+360.0)%360.0-180.0
+                    val position=CameraPosition.Builder(current.cameraPosition)
+                        .target(LatLng(latitude,rotated))
+                        .zoom(cameraZoomOverride ?: current.cameraPosition.zoom)
+                        .tilt(cameraTiltOverride ?: current.cameraPosition.tilt)
+                        .bearing(0.0)
+                        .build()
+                    current.moveCamera(CameraUpdateFactory.newCameraPosition(position))
+                }
+                start()
+            }
+        }
+        val observer=LifecycleEventObserver { _,_ -> syncGlobeRotation() }
+        owner.lifecycle.addObserver(observer)
+        syncGlobeRotation()
+        onDispose { owner.lifecycle.removeObserver(observer);globeAnimator[0]?.cancel();globeAnimator[0]=null }
+    }
     AndroidView(factory={mapView.apply {
         addOnDidFailLoadingMapListener { currentError("Map couldn't load. Check your internet connection.") }
         getMapAsync { m ->
@@ -68,7 +105,7 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
                 isCompassEnabled=false; isLogoEnabled=false; isAttributionEnabled=false
                 setAllGesturesEnabled(true)
             }
-            m.cameraPosition=CameraPosition.Builder().target(PreviewCenter.latLng()).zoom(15.2).tilt(35.0).bearing(-22.0).build()
+            m.cameraPosition=CameraPosition.Builder().target((cameraCenterOverride ?: PreviewCenter).latLng()).zoom(cameraZoomOverride ?: 15.2).tilt(cameraTiltOverride ?: 35.0).bearing(-22.0).build()
             m.addOnCameraMoveListener { currentBearing(m.cameraPosition.bearing.toFloat()) }
             m.addOnCameraMoveStartedListener { reason -> if(reason==MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
                 followPolicy.gestureStarted(SystemClock.elapsedRealtime());followTick++
@@ -83,13 +120,18 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
                 val named=features.firstOrNull { f -> f.hasProperty("name") && f.getStringProperty("name").isNotBlank() && f.geometry() is Point }
                 if(named!=null && !currentState.navigating) {
                     val p=named.geometry() as Point
-                    currentPin(Place("map:${p.latitude()},${p.longitude()}",named.getStringProperty("name"),"Selected on map",Coordinate(p.latitude(),p.longitude())))
+                    val kind=when {
+                        named.hasProperty("subclass") -> named.getStringProperty("subclass")
+                        named.hasProperty("class") -> named.getStringProperty("class")
+                        else -> "place"
+                    }
+                    currentPin(Place("map:${p.latitude()},${p.longitude()}",named.getStringProperty("name"),"Selected on map",Coordinate(p.latitude(),p.longitude()),kind))
                     true
                 } else false
             }
         }
     }},modifier=modifier,update={it.visibility=if(active)android.view.View.VISIBLE else android.view.View.INVISIBLE})
-    LaunchedEffect(map,state.world,active) {
+    LaunchedEffect(map,state.world,active,styleFileOverride) {
         val m=map ?: return@LaunchedEffect
         if(!active || styleReady>0 && loadedWorld==state.world)return@LaunchedEffect
         // Cancel synchronously before setStyle destroys native layer handles.
@@ -97,7 +139,7 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
         styleReady=0; currentError(null)
         val requestedWorld=state.world
         val requestedEpoch=styleEpoch[0]
-        val json=context.assets.open("styles/${state.world.file}.json").bufferedReader().use{it.readText()}
+        val json=context.assets.open("styles/${styleFileOverride ?: state.world.file}.json").bufferedReader().use{it.readText()}
         m.setStyle(Style.Builder().fromJson(json)) { style ->
             if(currentState.world!=requestedWorld || styleEpoch[0]!=requestedEpoch)return@setStyle
             val world=requestedWorld
@@ -105,17 +147,51 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
             style.addImage("nav-arrow",mapPlayer(world))
             style.addImage("position-uncertain",mapUnknownPosition(world))
             style.addImage("destination-marker",mapDestination(world))
-            for(kind in listOf("place","food","cafe","stay","fuel","parking"))style.addImage("poi-$kind",mapPoi(context,kind,world))
+            for(kind in listOf("place","food","cafe","pub","stay","fuel","parking","shop","sights","health","nature","cash"))
+                style.addImage("poi-$kind",mapPoi(context,kind,world))
             style.addImage("pixel-grass",BitmapFactory.decodeResource(context.resources,R.drawable.pixel_grass))
             style.addImage("pixel-stone",BitmapFactory.decodeResource(context.resources,R.drawable.pixel_stone))
             style.addImage("pixel-water",BitmapFactory.decodeResource(context.resources,R.drawable.pixel_water))
             style.addImage("paper-fibre",BitmapFactory.decodeResource(context.resources,R.drawable.paper_fibre))
-            style.addLayer(SymbolLayer("waypoint-places","openmaptiles").withSourceLayer("poi").apply{minZoom=14.8f}.withFilter(any(
-                eq(get("class"),literal("food")),eq(get("class"),literal("cafe")),eq(get("class"),literal("lodging")),eq(get("subclass"),literal("fuel")),eq(get("subclass"),literal("parking")),eq(get("class"),literal("hospital"))
-            )).withProperties(
-                iconImage(switchCase(eq(get("subclass"),literal("fuel")),literal("poi-fuel"),eq(get("subclass"),literal("parking")),literal("poi-parking"),match(get("class"),literal("poi-place"),stop("food",literal("poi-food")),stop("cafe",literal("poi-cafe")),stop("lodging",literal("poi-stay"))))),
-                iconSize(art.poiScale),iconAllowOverlap(false),textFont(arrayOf(world.mapFontName())),textField(step(zoom(),literal(""),stop(16.2,coalesce(get("name:en"),get("name"))))),textSize(10f),textColor(if(art.lightLabels)"#EEEEDF" else "#282E26"),textHaloColor(if(art.lightLabels)"#18201C" else "#E3DABF"),textHaloWidth(1.5f),textOffset(arrayOf(0f,2f))
-            ))
+            val poiLabel=step(zoom(),literal(""),stop(17.2,coalesce(get("name:en"),get("name_en"),get("name"))))
+            val poiIcon=switchCase(
+                any(eq(get("class"),literal("bar")),eq(get("class"),literal("beer")),eq(get("subclass"),literal("pub"))),literal("poi-pub"),
+                eq(get("class"),literal("cafe")),literal("poi-cafe"),
+                any(eq(get("class"),literal("restaurant")),eq(get("class"),literal("fast_food")),eq(get("class"),literal("ice_cream"))),literal("poi-food"),
+                eq(get("class"),literal("lodging")),literal("poi-stay"),
+                any(eq(get("class"),literal("fuel")),eq(get("subclass"),literal("fuel"))),literal("poi-fuel"),
+                eq(get("class"),literal("parking")),literal("poi-parking"),
+                any(eq(get("class"),literal("hospital")),eq(get("subclass"),literal("pharmacy"))),literal("poi-health"),
+                any(eq(get("class"),literal("attraction")),eq(get("class"),literal("art_gallery")),eq(get("class"),literal("castle")),eq(get("class"),literal("museum")),eq(get("class"),literal("library"))),literal("poi-sights"),
+                eq(get("class"),literal("park")),literal("poi-nature"),
+                eq(get("class"),literal("atm")),literal("poi-cash"),
+                any(eq(get("class"),literal("shop")),eq(get("class"),literal("grocery")),eq(get("class"),literal("alcohol_shop"))),literal("poi-shop"),
+                literal("poi-place"))
+            val essentialPoi=any(
+                eq(get("class"),literal("restaurant")),eq(get("class"),literal("fast_food")),eq(get("class"),literal("ice_cream")),
+                eq(get("class"),literal("cafe")),eq(get("class"),literal("bar")),eq(get("class"),literal("beer")),eq(get("subclass"),literal("pub")),
+                eq(get("class"),literal("lodging")),
+                eq(get("class"),literal("hospital")),eq(get("subclass"),literal("pharmacy")))
+            val utilityPoi=any(eq(get("class"),literal("fuel")),eq(get("class"),literal("parking")))
+            val discoveryPoi=any(
+                eq(get("class"),literal("shop")),eq(get("class"),literal("grocery")),eq(get("class"),literal("alcohol_shop")),
+                eq(get("class"),literal("attraction")),eq(get("class"),literal("art_gallery")),eq(get("class"),literal("castle")),
+                eq(get("class"),literal("museum")),eq(get("class"),literal("park")),eq(get("class"),literal("library")),
+                eq(get("class"),literal("atm")))
+            val readablePoiScale=art.poiScale.coerceAtLeast(.82f)
+            fun poiLayer(id:String, minZoom:Float, filter:org.maplibre.android.style.expressions.Expression, scale:Float)=
+                SymbolLayer(id,"openmaptiles").withSourceLayer("poi").apply{this.minZoom=minZoom}.withFilter(filter).withProperties(
+                    iconImage(poiIcon),iconSize(scale),iconAllowOverlap(false),iconPadding(5f),
+                    textFont(arrayOf(world.mapFontName())),textField(poiLabel),textSize(10f),textOptional(true),
+                    textColor(if(art.lightLabels)"#EEEEDF" else "#282E26"),
+                    textHaloColor(if(art.lightLabels)"#18201C" else "#E3DABF"),textHaloWidth(1.5f),textOffset(arrayOf(0f,2f)))
+            // Ranked icons surface gradually; collision placement keeps busy streets legible.
+            style.addLayer(poiLayer("waypoint-discovery-places",16.2f,
+                all(discoveryPoi,lte(get("rank"),step(zoom(),literal(10),stop(17.5,literal(30))))),readablePoiScale*.9f))
+            style.addLayer(poiLayer("waypoint-utility-places",16.2f,
+                all(utilityPoi,lte(get("rank"),step(zoom(),literal(5),stop(17.5,literal(15))))),readablePoiScale*.9f))
+            style.addLayer(poiLayer("waypoint-essential-places",14.8f,
+                all(essentialPoi,lte(get("rank"),step(zoom(),literal(12),stop(16.0,literal(32)),stop(17.5,literal(70))))),readablePoiScale))
             style.addSource(GeoJsonSource("route",FeatureCollection.fromFeatures(emptyArray<Feature>())))
             style.addLayer(LineLayer("route-casing","route").withProperties(lineColor("#161716"),lineWidth(art.routeWidth+3f),lineJoin(Property.LINE_JOIN_ROUND),lineCap(Property.LINE_CAP_ROUND)))
             style.addLayer(LineLayer("route-line","route").withProperties(lineColor(currentState.world.routeColor),lineWidth(art.routeWidth),lineJoin(Property.LINE_JOIN_ROUND),lineCap(Property.LINE_CAP_ROUND)))
@@ -213,11 +289,22 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
                 .tilt(if(state.tilted)if(state.navigating)50.0 else m.cameraPosition.tilt else 0.0).build()),500)
         }
     }
-    LaunchedEffect(active,state.cameraRequest,styleReady,routeInsets) {
+    LaunchedEffect(active,state.cameraRequest,styleReady,routeInsets,cameraZoomOverride,cameraTiltOverride,cameraCenterOverride) {
         val m=map ?: return@LaunchedEffect
         if(!active || styleReady==0) return@LaunchedEffect
-        followPolicy.resume();cameraFix=null;followTick++
-        if(state.route!=null && !state.navigating) {
+        val focusUser=state.fix!=null && state.cameraRequest==state.focusUserCameraRequest
+        followPolicy.resume();cameraFix=null
+        // A follow tick would launch a second camera animation at the old zoom.
+        if(!focusUser)followTick++
+        if(focusUser) {
+            val fix=requireNotNull(state.fix)
+            val zoom=if(state.navigating)17.2 else maxOf(16.3,state.world.mapArt().zoom)
+            m.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder()
+                .target(fix.latLng()).zoom(zoom)
+                .bearing(if(state.navigating)state.bearing.toDouble() else 0.0)
+                .tilt(if(state.navigating)50.0 else cameraTiltOverride ?: if(state.tilted)state.world.mapArt().tilt else 0.0)
+                .build()),700)
+        } else if(state.route!=null && !state.navigating) {
             val insets=routeInsets ?: return@LaunchedEffect
             val points=state.route.points.map{it.latLng()}+listOfNotNull(state.fix?.latLng(),state.selected?.point?.latLng())
             val bounds=LatLngBounds.Builder().includes(points).build()
@@ -226,8 +313,8 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
             m.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds,0.0,0.0,insets.left,insets.top,insets.right,insets.bottom),700)
         } else {
             val center=if(state.navigating) state.fix else state.selected?.point ?: state.fix
-            if(center!=null) m.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(center.latLng()).zoom(if(state.navigating)17.2 else state.world.mapArt().zoom).bearing(if(state.navigating)state.bearing.toDouble() else 0.0).tilt(if(state.tilted)state.world.mapArt().tilt else 0.0).build()),700)
-            else m.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(PreviewCenter.latLng()).zoom(state.world.mapArt().zoom).bearing(0.0).tilt(if(state.tilted)state.world.mapArt().tilt else 0.0).build()))
+            if(center!=null) m.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(center.latLng()).zoom(if(state.navigating)17.2 else cameraZoomOverride ?: state.world.mapArt().zoom).bearing(if(state.navigating)state.bearing.toDouble() else 0.0).tilt(if(state.navigating)50.0 else cameraTiltOverride ?: if(state.tilted)state.world.mapArt().tilt else 0.0).build()),700)
+            else m.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target((cameraCenterOverride ?: PreviewCenter).latLng()).zoom(cameraZoomOverride ?: state.world.mapArt().zoom).bearing(0.0).tilt(cameraTiltOverride ?: if(state.tilted)state.world.mapArt().tilt else 0.0).build()))
         }
     }
 }

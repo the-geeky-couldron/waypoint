@@ -39,7 +39,7 @@ class ReadmeScreenshotsTest {
                     MaterialTheme(colorScheme = darkColorScheme(primary=selected.accent, onPrimary=Ink, background=Ink, surface=Ink, onSurface=Cream, onSurfaceVariant=Muted)) {
                         Box(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding()) {
                             when (screen.value) {
-                                "welcome" -> WelcomeScreen(selected, {}, {}, {})
+                                "welcome" -> ReferenceOnboarding(selected, emptyList(), false, false, { _, _ -> }, {}, {})
                                 "library" -> androidx.compose.material3.Surface(color=Ink, contentColor=Cream) { HudLibrary(selected, {}, {}) }
                                 "updates" -> androidx.compose.material3.Surface(color=Ink, contentColor=Cream) { Column(Modifier.fillMaxWidth().padding(24.dp)) { UpdatePanel((activity.application as WaypointApplication).updater, false) } }
                                 else -> {

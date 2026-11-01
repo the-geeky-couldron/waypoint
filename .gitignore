@@ -1,4 +1,6 @@
 .gradle/
+.kotlin/
+.local/
 .idea/
 .tooling/
 local.properties
@@ -10,6 +12,8 @@ local.properties
 **/node_modules/
 
 dist/
+output/
+tmp/
 
 # Never publish signing identities or local credentials.
 *.keystore

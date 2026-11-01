@@ -23,7 +23,7 @@ fun UpdatePanel(updater: AppUpdater, navigating: Boolean) {
         Text("App updates", style = MaterialTheme.typography.titleLarge)
         Text("Waypoint ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyMedium, color = Muted)
         when (val current = status) {
-            UpdateStatus.Idle -> Text("Get the latest features directly from GitHub. Checks and downloads start only when you ask.", style = MaterialTheme.typography.bodyMedium)
+            UpdateStatus.Idle -> Text("Waypoint checks GitHub for stable releases when you open the app. Downloads begin only when you ask.", style = MaterialTheme.typography.bodyMedium)
             UpdateStatus.Checking -> {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 Text("Checking the latest release…", style = MaterialTheme.typography.bodyMedium)

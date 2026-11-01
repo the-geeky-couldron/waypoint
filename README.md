@@ -3,11 +3,12 @@
     <source media="(max-width: 640px)" srcset="docs/images/promo/hero-mobile.jpg" />
     <img src="docs/images/promo/hero.jpg" width="100%" alt="Waypoint. Your city. Another world. Real streets, game-inspired navigation. 27 worlds, every one included. Android, open source, no paywall." />
   </picture>
-  <p><strong>Your everyday journey, through the worlds you love.</strong><br />Native Android navigation. Real GPS. Spoken directions. A whole different atmosphere.</p>
+  <p><strong>Your everyday journey, through the worlds you love.</strong><br />Native Android navigation. Real GPS. Spoken directions. A whole different atmosphere.<br /><sub>Made in India · Open to the world</sub></p>
   <a href="https://github.com/the-geeky-couldron/waypoint/releases/latest"><img src="docs/images/promo/download.jpg" width="340" alt="Download Waypoint for Android" /></a>
   <p><sub>Android 8.0+ · Free APK · No account · No ads · Every world unlocked</sub></p>
   <p>
     <a href="https://github.com/the-geeky-couldron/waypoint/releases/latest"><img src="https://img.shields.io/github/v/release/the-geeky-couldron/waypoint?label=release&color=d5f16c&labelColor=101511" alt="Latest release" /></a>
+    <a href="https://github.com/the-geeky-couldron/waypoint/releases"><img src="https://img.shields.io/github/downloads/the-geeky-couldron/waypoint/total?label=downloads&amp;color=d5f16c&amp;labelColor=101511" alt="Total GitHub release downloads" /></a>
     <a href="https://github.com/the-geeky-couldron/waypoint/actions/workflows/android.yml"><img src="https://github.com/the-geeky-couldron/waypoint/actions/workflows/android.yml/badge.svg" alt="Android build status" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-d5f16c?labelColor=101511" alt="MIT license" /></a>
   </p>
@@ -97,7 +98,7 @@ An original adaptive icon that fits your launcher’s shape. **Material You them
 2. Choose a world, tap **Open map**, then **Locate** and grant precise location.
 3. Search for a place or hold the map to drop a pin. Choose **Car**, **Motorcycle** or **Walk** and tap **Start navigation**.
 
-**Already installed?** Go to **Settings → App updates → Check for updates**. Waypoint checks the downloaded APK’s checksum, package, version and signing identity before opening Android’s installer. You choose when to install; compatible updates preserve your saved places and preferences. End navigation before installing.
+**Already installed?** Waypoint checks for a stable release when you open the app. If one is available, it offers to download and verify it; the prompt returns on each launch until the update is installed. Downloads begin only when you tap **Download update**. Android still confirms installation, and compatible updates preserve your saved places and preferences. You can also check manually in **Settings → App updates**. End navigation before installing.
 
 <details>
 <summary><strong>A look inside: welcome screen and world library</strong></summary>
@@ -132,7 +133,7 @@ No map API key is required for the included evaluation services. Local debug bui
 
 GitHub Actions builds the app, runs unit tests and lint, and validates all 27 map styles on pushes and pull requests. Debug APKs and reports are saved as workflow artifacts.
 
-A version tag such as `v0.2.3` runs the checks again, builds a signed release and publishes **Waypoint.apk** and **SHA256SUMS**. The in-app updater reads that release. Versions live in [`version.properties`](version.properties); signing and publishing are covered in the [release guide](docs/releasing.md).
+A version tag such as `v1.0.0-r1` runs the checks again, builds a signed release and publishes **Waypoint.apk** and **SHA256SUMS**. The in-app updater reads that release. Versions live in [`version.properties`](version.properties); signing and publishing are covered in the [release guide](docs/releasing.md).
 
 The promotional posters are reproducible with `python3 scripts/create_readme_promo.py` using Pillow, the repository’s licensed fonts, and sanitised app screenshots. The posters contain no original game artwork. See [the artwork notes](docs/images/promo/README.md).
 

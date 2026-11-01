@@ -63,7 +63,8 @@ def scale_width(value,scale):
  return ['*',value,scale]
 map_fonts={name:'Waypoint Classic' for name in palettes}
 for name in ('night_city','bridges','spider','starfield','just_cause'):map_fonts[name]='Waypoint Technical'
-for name in ('old_west','rivia','lands_between','kingdom','hogwarts','mafia'):map_fonts[name]='Waypoint Atlas'
+for name in ('rivia','lands_between','kingdom','hogwarts','mafia'):map_fonts[name]='Waypoint Atlas'
+map_fonts['old_west']='Waypoint Western'
 for name in ('los_santos','green_terminal','skyrim','san_andreas','liberty','heat','far_cry'):map_fonts[name]='Waypoint Condensed'
 map_fonts['pixel']='Waypoint Pixel'
 for name,c in palettes.items():

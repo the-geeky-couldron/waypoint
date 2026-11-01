@@ -15,7 +15,8 @@ const fonts={
  'Waypoint Pixel':'monocraft.ttf',
  'Waypoint Terminal':'share_tech_mono.ttf',
  'Waypoint Atlas':'libre_baskerville.ttf',
- 'Waypoint Classic':'noto_sans.ttf'
+ 'Waypoint Classic':'noto_sans.ttf',
+ 'Waypoint Western':'kirsty_regular.ttf'
 };
 (async()=>{
  const mod={wasmBinary:fs.readFileSync(path.join(tool,'sdfglyph.wasm'))};

@@ -36,13 +36,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -69,7 +66,9 @@ val Panel=Color(0xFF20241F)
 val Cream=Color(0xFFF1F2E8)
 val Muted=Color(0xFFAFB5A7)
 val DisplayFont=FontFamily(Font(R.font.barlow_condensed_bold,FontWeight.Bold))
-val WesternFont=FontFamily(Font(R.font.rye))
+val WesternFont=FontFamily(Font(R.font.kirsty_regular),Font(R.font.kirsty_bold,FontWeight.Bold))
+val WesternDisplayFont=FontFamily(Font(R.font.chinese_rocks_regular))
+val GtaDisplayFont=FontFamily(Font(R.font.pricedown_black))
 val PixelFont=FontFamily(Font(R.font.monocraft))
 val TerminalFont=FontFamily(Font(R.font.share_tech_mono))
 val TechnicalFont=FontFamily(Font(R.font.rajdhani))
@@ -79,7 +78,7 @@ val ReadingSerifFont=FontFamily(Font(R.font.libre_baskerville))
 val SansFont=FontFamily(Font(R.font.noto_sans))
 val OrbitFont=FontFamily(Font(R.font.orbitron))
 val ViceFont=FontFamily(Font(R.font.yellowtail))
-fun worldFont(world: World)=when(world){World.VICE_COAST->ViceFont;World.LANDS_BETWEEN,World.HYRULE,World.ASSASSIN,World.HORIZON_WILDS,World.HOGWARTS,World.KINGDOM,World.MAFIA->AtlasFont;World.OLD_WEST->WesternFont;World.RIVIA->ReadingSerifFont;World.PIXEL->PixelFont;World.GREEN_TERMINAL->TerminalFont;World.NIGHT_CITY,World.BRIDGES,World.SPIDER,World.STARFIELD->TechnicalFont;else->DisplayFont}
+fun worldFont(world: World)=when(world){World.VICE_COAST->ViceFont;World.LOS_SANTOS,World.SAN_ANDREAS,World.LIBERTY->GtaDisplayFont;World.LANDS_BETWEEN,World.HYRULE,World.ASSASSIN,World.HORIZON_WILDS,World.HOGWARTS,World.KINGDOM,World.MAFIA->AtlasFont;World.OLD_WEST->WesternDisplayFont;World.RIVIA->ReadingSerifFont;World.PIXEL->PixelFont;World.GREEN_TERMINAL->TerminalFont;World.NIGHT_CITY,World.BRIDGES,World.SPIDER,World.STARFIELD->TechnicalFont;else->DisplayFont}
 private val AppTypography=Typography(
     displayLarge=Typography().displayLarge.copy(fontFamily=DisplayFont,fontWeight=FontWeight.Bold),
     displayMedium=Typography().displayMedium.copy(fontFamily=DisplayFont,fontWeight=FontWeight.Bold),
@@ -89,8 +88,13 @@ private val AppTypography=Typography(
 )
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        private var foregroundEntryCounter=0
+        private var configurationRestartPending=false
+    }
     private val controller get()=(application as WaypointApplication).navigation
     private var destinationLaunch by mutableIntStateOf(0)
+    private var foregroundEntry by mutableIntStateOf(0)
     private val displayListener=object:DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId:Int)=Unit
         override fun onDisplayRemoved(displayId:Int)=Unit
@@ -100,22 +104,24 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState); enableEdgeToEdge(); if(savedInstanceState==null && controller.handleNavigationIntent(intent)) destinationLaunch++
         setContent { val state by controller.state.collectAsStateWithLifecycle()
             LaunchedEffect(state.navigating) { if(state.navigating) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
-            WaypointApp(controller,state,destinationLaunch)
+            WaypointApp(controller,state,destinationLaunch,foregroundEntry)
         }
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent);setIntent(intent);if(controller.handleNavigationIntent(intent))destinationLaunch++ }
-    override fun onStart() { super.onStart();getSystemService(DisplayManager::class.java).registerDisplayListener(displayListener,null); controller.setDisplayRotation(windowManager.defaultDisplay.rotation); controller.setVisible(true) }
-    override fun onStop() { getSystemService(DisplayManager::class.java).unregisterDisplayListener(displayListener);controller.setVisible(false); super.onStop() }
+    override fun onStart() { super.onStart();if(configurationRestartPending)configurationRestartPending=false else foregroundEntryCounter++;foregroundEntry=foregroundEntryCounter;getSystemService(DisplayManager::class.java).registerDisplayListener(displayListener,null); controller.setDisplayRotation(windowManager.defaultDisplay.rotation); controller.setVisible(true);(application as WaypointApplication).updater.checkOnLaunch() }
+    override fun onStop() { configurationRestartPending=isChangingConfigurations;getSystemService(DisplayManager::class.java).unregisterDisplayListener(displayListener);controller.setVisible(false); super.onStop() }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WaypointApp(controller: NavigationController,state: NavState,destinationLaunch:Int=0) {
+fun WaypointApp(controller: NavigationController,state: NavState,destinationLaunch:Int=0,foregroundEntry:Int=0) {
     val context=LocalContext.current
+    val application=context.applicationContext as WaypointApplication
+    val updater=application.updater
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    var landing by rememberSaveable { mutableStateOf(true) }
+    var landing by rememberSaveable { mutableStateOf(controller.shouldShowLanding()) }
     val welcomeVisible=landing && !state.navigating
-    LaunchedEffect(destinationLaunch){if(destinationLaunch>0)landing=false}
+    LaunchedEffect(destinationLaunch){if(destinationLaunch>0 && !controller.shouldShowLanding()){controller.markMapOpened();landing=false}}
     var search by rememberSaveable { mutableStateOf(false) }
     var settings by rememberSaveable { mutableStateOf(false) }
     var clearConfirm by remember { mutableStateOf(false) }
@@ -124,24 +130,48 @@ fun WaypointApp(controller: NavigationController,state: NavState,destinationLaun
     var mapBounds by remember { mutableStateOf(Rect.Zero) }
     var routeHeaderBounds by remember { mutableStateOf(Rect.Zero) }
     var routePanelBounds by remember { mutableStateOf(Rect.Zero) }
+    var permissionDenied by rememberSaveable { mutableStateOf(false) }
+    var permissionRevision by remember { mutableIntStateOf(0) }
+    var updatePromptDismissed by remember(foregroundEntry) { mutableStateOf(application.updatePromptDismissedAtForegroundEntry==foregroundEntry) }
+    var pendingRelease by remember { mutableStateOf<ReleaseUpdate?>(null) }
+    val updateStatus by updater.state.collectAsStateWithLifecycle()
+    LaunchedEffect(updateStatus) {
+        when (val status=updateStatus) {
+            is UpdateStatus.Available -> pendingRelease=status.release
+            is UpdateStatus.Downloading -> pendingRelease=status.release
+            is UpdateStatus.Ready -> pendingRelease=status.release
+            UpdateStatus.Current -> pendingRelease=null
+            else -> Unit
+        }
+    }
+    val hasOnboardingLocationPermission=remember(permissionRevision,state.gpsStatus,foregroundEntry){controller.hasLocationPermission()}
     LaunchedEffect(welcomeVisible,tab,search,settings,steps) {
         controller.setHeadingUiVisible(settings || (!welcomeVisible && tab==0 && !search && !steps))
     }
 
     val snackbar=remember { SnackbarHostState() }
     val permissions=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        permissionDenied=!controller.hasLocationPermission()
+        permissionRevision++
         if(controller.hasLocationPermission()) controller.enableLocation() else controller.permissionDenied()
     }
     val notificationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     fun locate() {
-        if(controller.hasLocationPermission()) controller.enableLocation()
-        else permissions.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION))
+        if(controller.hasLocationPermission()) {
+            if(state.fix==null || !state.gpsReady) controller.enableLocation()
+            controller.recenter()
+        } else {
+            controller.recenter()
+            permissions.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION))
+        }
     }
-    fun choose(place: Place) { controller.select(place); search=false;tab=0;landing=false }
+    fun choose(place: Place) { controller.markMapOpened();controller.select(place); search=false;tab=0;landing=false }
+    val showUpdatePrompt=pendingRelease!=null && !updatePromptDismissed && !welcomeVisible && !state.navigating && state.selected==null &&
+        tab==0 && !search && !settings && !steps
     MaterialTheme(colorScheme=darkColorScheme(primary=state.world.accent,onPrimary=Ink,primaryContainer=state.world.accent.copy(alpha=0.18f),onPrimaryContainer=state.world.accent,
         background=Ink,surface=Ink,surfaceVariant=Panel,onSurface=Cream,onSurfaceVariant=Muted,outline=Color(0xFF51594B),secondary=state.world.accent),typography=AppTypography) {
-        BackHandler(search || settings || steps || tab!=0 || (!welcomeVisible && !state.navigating)) {
-            when { search->search=false; settings->settings=false; steps->steps=false; tab!=0->tab=0; state.selected!=null->controller.clearDestination(); else->landing=true }
+        BackHandler(search || settings || steps || tab!=0 || (!welcomeVisible && state.selected!=null)) {
+            when { search->search=false; settings->settings=false; steps->steps=false; tab!=0->tab=0; state.selected!=null->controller.clearDestination() }
         }
         LaunchedEffect(state.message) { state.message?.let{snackbar.showSnackbar(it);controller.dismissMessage()} }
         BoxWithConstraints(Modifier.fillMaxSize().background(Ink)) {
@@ -174,7 +204,7 @@ fun WaypointApp(controller: NavigationController,state: NavState,destinationLaun
                         if(!welcomeVisible && (tab==0 || state.navigating)) {
                             Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
                                 val atlasActions=AtlasActions({search=true},{tab=1},{tab=2},{settings=true},
-                                    {if(state.fix==null || !state.gpsReady)locate() else controller.recenter()},controller::toggleTilt,controller::toggleVoice,
+                                    {locate()},controller::toggleTilt,controller::toggleVoice,
                                     {query->search=true;controller.search(query)})
                                 if(!state.navigating && state.selected==null) {
                                     GameAtlasChrome(state,atlasActions,Modifier.padding(bottom=48.dp))
@@ -217,7 +247,18 @@ fun WaypointApp(controller: NavigationController,state: NavState,destinationLaun
                                 Box(Modifier.align(Alignment.BottomEnd)){Attribution(state.world)}
                             }
                         }
-                        if(welcomeVisible) WelcomeScreen(state.world,{landing=false},{tab=1},{settings=true})
+                        if(welcomeVisible) ReferenceOnboarding(
+                            initialWorld=state.world,
+                            initialFavorites=if(controller.hasCompletedOnboarding()) controller.favoriteWorlds() else emptyList(),
+                            hasLocationPermission=hasOnboardingLocationPermission,
+                            permissionDenied=permissionDenied,
+                            onComplete={chosen,favorites->controller.changeWorld(chosen);controller.completeOnboarding(favorites);landing=false},
+                            onRequestLocation={
+                                if(controller.hasLocationPermission()){controller.enableLocation();permissionRevision++}
+                                else permissions.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION))
+                            },
+                            onOpenAppSettings={context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:${context.packageName}")))}
+                        )
                         if(tab==1) WorldsScreen(state.world,{controller.changeWorld(it);tab=0},{tab=0})
                         if(tab==2 && !state.navigating) SavedScreen(state,::choose,{controller.toggleSaved(it)},{search=true})
                         if(search) SearchScreen(state,controller::search,::choose,{search=false},controller::changeMode,controller::submitSearch)
@@ -249,12 +290,19 @@ fun WaypointApp(controller: NavigationController,state: NavState,destinationLaun
                 TextButton(onClick={context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:${context.packageName}")))}) { Text("Manage location permissions") }
                 TextButton(onClick={clearConfirm=true}) { Text("Clear saved places and history",color=MaterialTheme.colorScheme.error) }
                 Text("WAYPOINT",style=MaterialTheme.typography.headlineMedium,color=state.world.accent)
+                Text("Made in India · Open to the world",style=MaterialTheme.typography.bodySmall,color=Muted)
                 Text("Open source. Every world included. No ads or subscriptions.",style=MaterialTheme.typography.bodyMedium)
                 Text("Routes use OpenStreetMap with OSRM (car) and Valhalla (motorcycle/walk). Routes don't include live traffic. Online maps and search require internet. Your location and destination are shared with routing and search providers when needed; saved places stay on this phone.",style=MaterialTheme.typography.bodySmall,color=Muted)
                 Text("Original map styles inspired by games. Not affiliated with their publishers.",style=MaterialTheme.typography.bodySmall,color=Muted)
                 Spacer(Modifier.height(24.dp))
             }
         }
+        if(showUpdatePrompt) UpdatePromptDialog(
+            release=requireNotNull(pendingRelease),
+            updater=updater,
+            navigating=state.navigating,
+                            onLater={updatePromptDismissed=true;application.updatePromptDismissedAtForegroundEntry=foregroundEntry},
+        )
         if(clearConfirm) AlertDialog(onDismissRequest={clearConfirm=false},title={Text("Clear your places?")},text={Text("This removes your saved destinations and recent navigation history from this phone.")},confirmButton={TextButton(onClick={controller.clearHistory();clearConfirm=false}){Text("Clear places")}},dismissButton={TextButton(onClick={clearConfirm=false}){Text("Cancel")}})
         if(steps) ModalBottomSheet(onDismissRequest={steps=false},containerColor=Ink) {
             Text("Your route",style=MaterialTheme.typography.headlineLarge,modifier=Modifier.padding(horizontal=24.dp))
@@ -288,14 +336,32 @@ fun maneuverIcon(step: Maneuver?): ImageVector = when { step==null->Icons.Defaul
 
 @Composable fun ManeuverBanner(state: NavState,onClick:()->Unit) = HudManeuver(state,onClick)
 @Composable fun NavigationFooter(state: NavState,onSteps:()->Unit,onStop:()->Unit) = HudRouteFooter(state,onSteps,onStop)
+private fun placeCategory(kind:String):Pair<ImageVector,String> = when(kind.lowercase(Locale.ROOT)) {
+    "restaurant","fast_food","ice_cream","food" -> Icons.Default.Restaurant to "Food"
+    "cafe","coffee_shop" -> Icons.Default.LocalCafe to "Café"
+    "bar","beer","pub" -> Icons.Default.LocalBar to "Drinks & pubs"
+    "lodging","hotel","hostel","guest_house" -> Icons.Default.Hotel to "Stay"
+    "fuel" -> Icons.Default.LocalGasStation to "Fuel"
+    "parking" -> Icons.Default.LocalParking to "Parking"
+    "shop","grocery","alcohol_shop" -> Icons.Default.Store to "Shop"
+    "attraction","art_gallery","castle","museum","library" -> Icons.Default.Explore to "Explore"
+    "hospital","pharmacy" -> Icons.Default.LocalHospital to "Health"
+    "park" -> Icons.Default.Park to "Park"
+    "atm" -> Icons.Default.AttachMoney to "ATM"
+    else -> Icons.Default.Place to "Place"
+}
 @Composable fun DestinationCard(state: NavState,onSave:()->Unit,onClose:()->Unit,onLocate:()->Unit,onRetry:()->Unit,onStart:()->Unit,onSteps:()->Unit,compact:Boolean=false) {
     val place=state.selected ?: return
     val palette=hudPalette(state.world)
+    val (categoryIcon,categoryLabel)=placeCategory(place.kind)
+    val detail=if(place.address=="Selected on map")"$categoryLabel · Selected on map" else place.address
     Surface(color=palette.panel,contentColor=palette.foreground,shape=hudShape(state.world),border=hudBorder(state.world),modifier=Modifier.fillMaxWidth()) {
         Column(Modifier.padding(if(compact)12.dp else 16.dp),verticalArrangement=Arrangement.spacedBy(if(compact)8.dp else 12.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text(if(state.arrived)"YOU HAVE ARRIVED" else place.name,style=if(compact)MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,maxLines=2,overflow=TextOverflow.Ellipsis);Text(if(state.arrived)place.name else place.address,style=MaterialTheme.typography.bodySmall,color=palette.muted,maxLines=if(compact)1 else 2,overflow=TextOverflow.Ellipsis) }
-                TextButton(onClick=onSave,contentPadding=PaddingValues(2.dp),modifier=Modifier.width(64.dp).heightIn(min=56.dp).semantics{contentDescription="Save place"}) {Column(horizontalAlignment=Alignment.CenterHorizontally){Icon(if(state.saved.any{it.id==place.id})Icons.Default.Bookmark else Icons.Default.BookmarkBorder,null,tint=palette.accent);Text(if(state.saved.any{it.id==place.id})"Saved" else "Save",fontFamily=PipBoyFont,fontSize=12.sp,lineHeight=16.sp,letterSpacing=0.sp,maxLines=1,softWrap=false,color=palette.accent)}}
+                Surface(color=palette.accent.copy(alpha=.15f),shape=hudShape(state.world)) {Icon(categoryIcon,categoryLabel,Modifier.padding(10.dp).size(22.dp),tint=palette.accent)}
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) { Text(if(state.arrived)"YOU HAVE ARRIVED" else place.name,style=if(compact)MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,maxLines=2,overflow=TextOverflow.Ellipsis);Text(if(state.arrived)place.name else detail,style=MaterialTheme.typography.bodySmall,color=palette.muted,maxLines=if(compact)1 else 2,overflow=TextOverflow.Ellipsis) }
+                TextButton(onClick=onSave,contentPadding=PaddingValues(2.dp),modifier=Modifier.width(64.dp).heightIn(min=56.dp).semantics{contentDescription="Save place"}) {Column(horizontalAlignment=Alignment.CenterHorizontally){Icon(if(state.saved.any{it.id==place.id})Icons.Default.Bookmark else Icons.Default.BookmarkBorder,null,tint=palette.accent);Text(if(state.saved.any{it.id==place.id})"Saved" else "Save",fontFamily=hudFont(state.world),fontSize=12.sp,lineHeight=16.sp,letterSpacing=0.sp,maxLines=1,softWrap=false,color=palette.accent)}}
             }
             when {
                 state.arrived -> Button(onClick=onClose,modifier=Modifier.fillMaxWidth()) { Text("Done") }
@@ -327,7 +393,7 @@ fun maneuverIcon(step: Maneuver?): ImageVector = when { step==null->Icons.Defaul
             Icon(Icons.Default.Search,null,Modifier.size(20.dp));Spacer(Modifier.width(8.dp));Text("Search places")
         }
         Box(Modifier.padding(horizontal=16.dp)){TransportModes(state.mode,onMode,state.world)}
-        Text(if(state.fix==null)"Search worldwide · preview near Los Angeles" else "Search near your location",style=MaterialTheme.typography.bodySmall,color=Muted,modifier=Modifier.padding(horizontal=24.dp,vertical=12.dp))
+        Text(if(state.fix==null)"Search worldwide · preview near Kolkata" else "Search near your location",style=MaterialTheme.typography.bodySmall,color=Muted,modifier=Modifier.padding(horizontal=24.dp,vertical=12.dp))
         if(state.searchNote!=null)Text(state.searchNote,style=MaterialTheme.typography.bodySmall,color=Muted,modifier=Modifier.padding(horizontal=24.dp,vertical=8.dp))
         if(state.searching) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal=24.dp))
         if(state.searchError!=null) { Notice(state.searchError,Icons.Default.CloudOff);TextButton(onClick={submit()}){Text("Retry search")} }
@@ -361,30 +427,58 @@ fun maneuverIcon(step: Maneuver?): ImageVector = when { step==null->Icons.Defaul
     }
 }
 @Composable fun WorldsScreen(selected: World,onSelect:(World)->Unit,onClose:()->Unit) = HudLibrary(selected,onSelect,onClose)
-@Composable fun MapSwatch(world: World,modifier:Modifier=Modifier) {
-    // Cached, batched thumbnail paths: scrolling does not allocate 100+ shapes per card/frame.
-    Box(modifier.drawWithCache {
-        val w=size.width;val h=size.height
-        val buildings=Path().apply {
-            for(x in -2..10) for(y in -2..5) {
-                val left=x*w/7+y*13;val top=y*h/3
-                addRect(androidx.compose.ui.geometry.Rect(left+8,top+6,left+w/7-9,top+h/3-9))
-            }
+internal enum class WorldRouteStyle { URBAN, NEON, PIXEL, TRAIL, COAST }
+
+internal fun World.routeStyle()=when {
+    this==World.PIXEL -> WorldRouteStyle.PIXEL
+    this in setOf(World.NIGHT_CITY,World.GREEN_TERMINAL,World.LIBERTY,World.SPIDER,World.SAINTS) -> WorldRouteStyle.NEON
+    this in setOf(World.OLD_WEST,World.RIVIA,World.HYRULE,World.SKYRIM,World.LANDS_BETWEEN,World.ASSASSIN,World.FAR_CRY,World.GHOST,World.BRIDGES,World.HORIZON_WILDS,World.HOGWARTS,World.KINGDOM,World.JUST_CAUSE) -> WorldRouteStyle.TRAIL
+    this in setOf(World.VICE_COAST,World.HORIZON,World.HEAT) -> WorldRouteStyle.COAST
+    else -> WorldRouteStyle.URBAN
+}
+
+internal data class RouteGeometry(val path:Path,val stops:List<Offset>)
+
+internal fun routeGeometry(world:World,width:Float,height:Float):RouteGeometry {
+    fun p(x:Float,y:Float)=Offset(width*x,height*y)
+    val style=world.routeStyle()
+    val stops:List<Offset>
+    val path=Path()
+    when(style) {
+        WorldRouteStyle.PIXEL -> {
+            stops=listOf(p(.12f,.84f),p(.36f,.84f),p(.36f,.64f),p(.58f,.64f),p(.58f,.39f),p(.84f,.39f),p(.84f,.16f))
+            path.moveTo(stops.first().x,stops.first().y);stops.drop(1).forEach{path.lineTo(it.x,it.y)}
         }
-        val roads=Path().apply {
-            for(i in 0..8){moveTo(i*w/7-20f,0f);lineTo(i*w/7+45f,h)}
-            for(i in 0..4){moveTo(0f,i*h/3);lineTo(w,i*h/3-35)}
+        WorldRouteStyle.NEON -> {
+            stops=listOf(p(.12f,.84f),p(.27f,.7f),p(.27f,.52f),p(.48f,.52f),p(.48f,.36f),p(.72f,.36f),p(.72f,.17f),p(.88f,.17f))
+            path.moveTo(stops.first().x,stops.first().y);stops.drop(1).forEach{path.lineTo(it.x,it.y)}
         }
-        val route=Path().apply{moveTo(w*.55f,h);lineTo(w*.52f,h*.5f);lineTo(w*.82f,h*.35f);lineTo(w*.8f,0f)}
-        val color=Color(android.graphics.Color.parseColor(world.routeColor))
-        onDrawBehind {
-            clipRect {
-                drawRect(world.ground);drawPath(buildings,world.building)
-                drawPath(roads,world.road,style=androidx.compose.ui.graphics.drawscope.Stroke(3f))
-                drawPath(route,color,style=androidx.compose.ui.graphics.drawscope.Stroke(7f,cap=StrokeCap.Round))
-            }
+        WorldRouteStyle.TRAIL -> {
+            stops=listOf(p(.12f,.84f),p(.31f,.67f),p(.48f,.59f),p(.62f,.39f),p(.86f,.17f))
+            path.moveTo(stops[0].x,stops[0].y)
+            path.cubicTo(p(.2f,.8f).x,p(.2f,.8f).y,p(.17f,.65f).x,p(.17f,.65f).y,stops[1].x,stops[1].y)
+            path.cubicTo(p(.42f,.7f).x,p(.42f,.7f).y,p(.38f,.46f).x,p(.38f,.46f).y,stops[2].x,stops[2].y)
+            path.cubicTo(p(.62f,.61f).x,p(.62f,.61f).y,p(.49f,.42f).x,p(.49f,.42f).y,stops[3].x,stops[3].y)
+            path.cubicTo(p(.78f,.39f).x,p(.78f,.39f).y,p(.66f,.22f).x,p(.66f,.22f).y,stops[4].x,stops[4].y)
         }
-    })
+        WorldRouteStyle.COAST -> {
+            stops=listOf(p(.1f,.77f),p(.32f,.64f),p(.51f,.48f),p(.7f,.3f),p(.9f,.19f))
+            path.moveTo(stops[0].x,stops[0].y)
+            path.cubicTo(p(.2f,.75f).x,p(.2f,.75f).y,p(.19f,.58f).x,p(.19f,.58f).y,stops[1].x,stops[1].y)
+            path.cubicTo(p(.43f,.69f).x,p(.43f,.69f).y,p(.42f,.4f).x,p(.42f,.4f).y,stops[2].x,stops[2].y)
+            path.cubicTo(p(.62f,.53f).x,p(.62f,.53f).y,p(.6f,.26f).x,p(.6f,.26f).y,stops[3].x,stops[3].y)
+            path.cubicTo(p(.79f,.34f).x,p(.79f,.34f).y,p(.79f,.18f).x,p(.79f,.18f).y,stops[4].x,stops[4].y)
+        }
+        WorldRouteStyle.URBAN -> {
+            stops=listOf(p(.12f,.84f),p(.32f,.67f),p(.5f,.61f),p(.68f,.39f),p(.88f,.16f))
+            path.moveTo(stops[0].x,stops[0].y)
+            path.cubicTo(p(.22f,.79f).x,p(.22f,.79f).y,p(.21f,.65f).x,p(.21f,.65f).y,stops[1].x,stops[1].y)
+            path.cubicTo(p(.45f,.71f).x,p(.45f,.71f).y,p(.38f,.51f).x,p(.38f,.51f).y,stops[2].x,stops[2].y)
+            path.cubicTo(p(.63f,.6f).x,p(.63f,.6f).y,p(.55f,.4f).x,p(.55f,.4f).y,stops[3].x,stops[3].y)
+            path.cubicTo(p(.81f,.35f).x,p(.81f,.35f).y,p(.75f,.19f).x,p(.75f,.19f).y,stops[4].x,stops[4].y)
+        }
+    }
+    return RouteGeometry(path,stops)
 }
 
 @Composable fun WorldDropdown(label: String, selected: World, onSelect: (World)->Unit) {

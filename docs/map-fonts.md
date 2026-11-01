@@ -1,27 +1,30 @@
 # Map lettering
 
-Waypoint now renders native road, locality and POI text with bundled SDF fonts,
-not only Compose overlay fonts. `MapGlyphs.kt` resolves the generated ranges locally;
-`generate_styles.py` and `World.mapFontName()` agree on the six named stacks.
-Unknown ranges fall back to the map provider's Noto Sans coverage.
+Waypoint renders road, locality and POI text with bundled MapLibre SDF glyphs.
+`MapGlyphs.kt` resolves the generated ranges locally; `generate_styles.py` and
+`World.mapFontName()` use the same seven named stacks. Unknown ranges fall back
+to the map provider's Noto Sans coverage. Run `node scripts/generate_glyphs.cjs`
+after changing a font; generator provenance is in `tools/glyph-generation/`.
 
-| Role | Bundled font | Fidelity |
+| Role | Typeface in Waypoint | Use |
 |---|---|---|
-| Cyberpunk technical labels | Rajdhani | Identified main face; lettering size, weight and placement remain a mobile adaptation. |
-| Fallout Pip-Boy and condensed map labels | Roboto Condensed | Fallout's main interface family; the terminal's separate Share Tech Mono face is not substituted across the Pip-Boy. |
-| Pixel labels | Monocraft | Open-source pixel interpretation, not a proprietary extracted game font. |
-| Serif atlas labels | Libre Baskerville | Readable substitute for unavailable game-specific serif faces. |
-| Neutral map labels | Noto Sans | Geographic-label coverage and readable fallback. |
-| Western / fantasy / Vice titles | Rye / Cinzel / Yellowtail | Explicit substitutes, not original RDR, Skyrim or GTA font files. |
+| Red Dead inspired Western map and HUD | Kirsty regular / bold | Game identified main family; local map glyphs use regular. |
+| Red Dead inspired Western titles | Chinese Rocks regular | Display face. |
+| GTA inspired titles | Pricedown Black | Los Santos, San Andreas and Liberty titles only. |
+| Cyberpunk technical map and HUD | Rajdhani | Identified main family. |
+| Fallout Pip-Boy HUD | Roboto Condensed | Main interface family. |
+| Pixel map | Monocraft | Open pixel interpretation. |
+| Other fantasy / antique maps | Libre Baskerville | Readable substitute. |
+| Neutral geographic labels | Noto Sans | Broad script coverage and fallback. |
 
-Sources checked: [Cyberpunk font roles](https://www.gamefontlibrary.com/games/cyberpunk-2077),
-[Fallout font configuration](https://scrivener07.github.io/BGS-Handbook/wiki/fo4/interface/reference/assets/fonts),
-[SkyUI font configuration](https://github.com/schlangster/skyui/blob/master/build/fontconfig.txt),
-[RDR2 font roles](https://www.gamefontlibrary.com/games/red-dead-redemption-2-).
-The latter identifies Kirsty and Hapna separately from the Chinese Rocks display face.
-Those proprietary fonts are not bundled. A game's logo face is not evidence for its
-road labels or body text. No 1:1 font-reproduction claim is made.
+The game font files and source URLs are recorded in
+`third_party/game_fonts/README.md`. The project owner states that they hold
+redistribution rights for the game typefaces. The public download pages alone
+grant narrower rights, so those pages are source records, not the legal basis
+for redistribution. The remaining 27-world font treatments are adaptations;
+this document does not claim that every game map uses an exact original face.
 
-Fonts come from their upstream open-font projects / Google Fonts, with notices in
-`docs/licenses/`. Regenerate using `node scripts/generate_glyphs.cjs`; the official
-MapLibre generator and its provenance are in `tools/glyph-generation/`.
+Typeface identification: [Cyberpunk](https://www.gamefontlibrary.com/games/cyberpunk-2077),
+[Red Dead Redemption 2](https://www.gamefontlibrary.com/games/red-dead-redemption-2-),
+[Fallout interface](https://scrivener07.github.io/BGS-Handbook/wiki/fo4/interface/reference/assets/fonts),
+[GTA fonts](https://gtamods.com/wiki/Fonts_%28GTA_V%29).

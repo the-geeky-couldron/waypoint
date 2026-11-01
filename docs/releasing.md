@@ -28,7 +28,7 @@ Local release builds accept `WAYPOINT_KEYSTORE`, `WAYPOINT_STORE_PASSWORD`, `WAY
 
 ## Publish an update
 
-1. Change `version.properties`. Use a stable `major.minor.patch` version, each component between 0 and 999. Set `VERSION_CODE = major × 1,000,000 + minor × 1,000 + patch`; always increase it.
+1. Change `version.properties`. Use `major.minor.patch` with an optional `-rN` revision suffix. Major may be 0–999; minor and patch may be 0–99; revision may be 1–99. Set `VERSION_CODE = major × 1,000,000 + minor × 10,000 + patch × 100 + revision` (revision is zero without a suffix). Always increase it. After `1.0.0-r1`, use `1.0.0-r2` for a debut revision or `1.0.1` for the next patch update.
 2. Update `docs/releases/current.md` with the new release notes. Update tests/screenshots when behavior or appearance changes.
 3. Run verification, commit, push, then tag the exact commit:
 
@@ -37,17 +37,17 @@ python3 scripts/check_version.py
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 # Example only: first change version.properties and release notes to match.
 git add version.properties docs/releases/current.md
-git commit -m "Release 0.2.2"
+git commit -m "Release 1.0.0-r1"
 git push origin main
-git tag -a v0.2.2 -m "Waypoint 0.2.2"
-git push origin v0.2.2
+git tag -a v1.0.0-r1 -m "Waypoint 1.0.0-r1"
+git push origin v1.0.0-r1
 ```
 
 Watch the Android workflow. Its release job verifies that the tag and version file agree. After publication, verify the APK and checksum on the release page. Keep pushed tags immutable, including tags whose release workflow failed. Use a new patch version and an annotated tag for corrections; never overwrite an already-published APK.
 
 ## Updater behavior
 
-Settings offers a manual check against GitHub's latest stable release API. Drafts, prereleases and older/equal versions are ignored. No background polling, GitHub credentials, or location information is involved.
+Waypoint checks GitHub's latest stable release API when the app enters the foreground. Drafts, prereleases and older/equal versions are ignored. An available update is offered over the idle map and returns on each launch until installed; choosing Later dismisses it only for the current foreground entry. Downloads remain explicit, with no background polling, GitHub credentials or location information involved. Settings also offers a manual check.
 
 Before showing Install update, Waypoint checks:
 

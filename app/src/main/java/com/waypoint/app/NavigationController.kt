@@ -29,7 +29,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
 
-val PreviewCenter = Coordinate(34.0495,-118.2505)
+val PreviewCenter = Coordinate(22.5726,88.3639)
 
 data class NavState(
     val world: World = World.LOS_SANTOS,
@@ -47,7 +47,7 @@ data class NavState(
     val satellitesVisible: Int? = null,
     val gpsStatus: String = "GPS not connected",
     val gpsReady: Boolean = false,
-    val city: String = "Los Angeles · map preview",
+    val city: String = "Kolkata · map preview",
     val selected: Place? = null,
     val route: RoadRoute? = null,
     val progress: RouteProgress? = null,
@@ -67,6 +67,7 @@ data class NavState(
     val recent: List<Place> = emptyList(),
     val message: String? = null,
     val cameraRequest: Int = 0,
+    val focusUserCameraRequest: Int = -1,
     val tilted: Boolean = true,
     val carNight: Boolean = false,
     val carDayWorld: World = World.HORIZON,
@@ -74,6 +75,7 @@ data class NavState(
 )
 
 class WaypointApplication : Application() {
+    var updatePromptDismissedAtForegroundEntry: Int = -1
     override fun onCreate() { super.onCreate();MapGlyphs.install(this) }
     val navigation by lazy { NavigationController(this) }
     val updater by lazy { AppUpdater(this) }
@@ -137,6 +139,7 @@ class NavigationController(private val app: Application, private val repository:
         override fun onStopped() { _state.update{it.copy(satellitesUsed=null,satellitesVisible=null)} }
     }
     private var lastLocationNanos=0L
+    private var userFocusPending=false
     private var lastFixElapsed = 0L
     private var lastGpsElapsed = 0L
     private val reroutePolicy = ReroutePolicy()
@@ -268,7 +271,7 @@ class NavigationController(private val app: Application, private val repository:
         manager.unregisterGnssStatusCallback(gnssCallback)
         heading.stop()
     }
-    fun permissionDenied() { _state.update{it.copy(gpsReady=false,gpsStatus="Precise location required",message="Allow precise location in Android settings to navigate.")} }
+    fun permissionDenied() { userFocusPending=false;_state.update{it.copy(gpsReady=false,gpsStatus="Precise location required",message="Allow precise location in Android settings to navigate.")} }
     private fun receiveLocation(location: Location) {
         if(!listening)return
         val now = SystemClock.elapsedRealtime()
@@ -284,13 +287,19 @@ class NavigationController(private val app: Application, private val repository:
         val first = _state.value.fix==null
         lastFixElapsed=now-age
         val reliable = location.hasAccuracy() && location.accuracy <= 60f
+        val focusUserNow = userFocusPending && reliable
+        if(focusUserNow) userFocusPending=false
         if(reliable)lastPreciseFixElapsed=now-age
         val speed = if(location.hasSpeed() && location.speed.isFinite() && location.speed >= 0f) location.speed else 0f
-        _state.update{it.copy(fix=fix,accuracy=location.accuracy,gpsReady=reliable,
+        _state.update{
+            val nextCameraRequest=it.cameraRequest+if(first || focusUserNow) 1 else 0
+            it.copy(fix=fix,accuracy=location.accuracy,gpsReady=reliable,
             gpsStatus=if(reliable) "GPS connected" else "Improving GPS accuracy…",
             speed=speed,
             city=if(first)"Current area" else it.city,
-            cameraRequest=it.cameraRequest+if(first) 1 else 0)}
+            cameraRequest=nextCameraRequest,
+            focusUserCameraRequest=if(focusUserNow) nextCameraRequest else it.focusUserCameraRequest)
+        }
         applyHeading(headingArbiter.location(
             bearing=if(location.hasBearing())location.bearing else null,
             speed=speed,
@@ -415,10 +424,37 @@ class NavigationController(private val app: Application, private val repository:
         if(_state.value.selected!=null && _state.value.gpsReady)requestRoute()
     }
     fun changeWorld(world: World) { _state.update{it.copy(world=world)}; prefs.edit().putString("world",world.name).apply() }
+    fun hasCompletedOnboarding(): Boolean = prefs.getBoolean(
+        "onboardingCompleted",
+        prefs.getBoolean("mapOpened", prefs.contains("world"))
+    )
+    // This release introduces the new landing journey to existing installs once.
+    fun shouldShowLanding(): Boolean = !hasCompletedOnboarding() ||
+        prefs.getInt("welcomeShownVersion", 0) < 1_000_001
+    fun markMapOpened() {
+        prefs.edit().putBoolean("mapOpened", true).putBoolean("onboardingCompleted", true).apply()
+    }
+    fun favoriteWorlds(): List<World> = prefs.getString("favoriteWorlds", null)
+        ?.split(',')
+        ?.mapNotNull { name -> World.entries.find { it.name == name } }
+        ?.distinct()
+        ?.take(World.entries.size)
+        ?.ifEmpty { listOf(_state.value.world) }
+        ?: listOf(_state.value.world)
+    fun completeOnboarding(favorites: List<World>) {
+        val edit = prefs.edit().putBoolean("onboardingCompleted", true).putBoolean("mapOpened", true)
+            .putInt("welcomeShownVersion", 1_000_001)
+        if (favorites.isNotEmpty()) edit.putString("favoriteWorlds", favorites.distinct().joinToString(",") { it.name })
+        edit.apply()
+    }
     fun toggleVoice() { _state.update{it.copy(voice=!it.voice)}; prefs.edit().putBoolean("voice",_state.value.voice).apply(); if(!_state.value.voice) tts.stop() }
     fun toggleUnits() { _state.update{it.copy(imperial=!it.imperial)}; prefs.edit().putBoolean("imperial",_state.value.imperial).apply() }
     fun toggleTilt() { _state.update{it.copy(tilted=!it.tilted,cameraRequest=it.cameraRequest+1)};prefs.edit().putBoolean("tilted",_state.value.tilted).apply() }
-    fun recenter() { _state.update{it.copy(cameraRequest=it.cameraRequest+1)} }
+    fun recenter() {
+        if(_state.value.fix==null || !_state.value.gpsReady) { userFocusPending=true;return }
+        userFocusPending=false
+        _state.update{val next=it.cameraRequest+1;it.copy(cameraRequest=next,focusUserCameraRequest=next)}
+    }
     fun dismissMessage() { _state.update{it.copy(message=null)} }
     fun toggleSaved(place: Place) {
         val existing=_state.value.saved

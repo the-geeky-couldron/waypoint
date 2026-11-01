@@ -31,7 +31,7 @@ sealed interface UpdateStatus {
 
 class UpdateFileProvider : FileProvider()
 
-/** No automatic network checks or installs. The app process owns downloads across rotation. */
+/** Checks on foreground entry; downloads and installation remain explicit user actions. */
 class AppUpdater(private val context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val mutable = MutableStateFlow<UpdateStatus>(UpdateStatus.Idle)
@@ -44,6 +44,13 @@ class AppUpdater(private val context: Context) {
             if (!ReleaseUpdate.trustedDownloadHost(chain.request().url.toString())) throw IOException("Untrusted update server.")
             chain.proceed(chain.request())
         }.build()
+
+    fun checkOnLaunch() {
+        when (mutable.value) {
+            is UpdateStatus.Available, is UpdateStatus.Downloading, is UpdateStatus.Ready -> return
+            else -> check()
+        }
+    }
 
     fun check() {
         if (job?.isCompleted == false) return

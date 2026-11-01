@@ -39,7 +39,7 @@ Public promotional artwork uses original compositions, the original Waypoint ico
 
 The launch surface is a native animated welcome screen with Open map and world selection. Only game variants are offered. In every launcher/library preview, the map-style name is large and the game name is smaller, with uniform type sizes. Map actions have visible explanatory labels. Distinct per-game placement remains pinned. Theme changes remain available during route preview and active navigation without losing the route.
 
-The release extension adds manual update checks and downloads in Settings. Stable GitHub release APKs must pass checksum, package, version and signing-identity checks before Android's installer opens. Installation is user-confirmed and disabled during navigation. The prepared token-free update channel requires public GitHub Releases. Public documentation screenshots use explicit demonstration coordinates, never the user's GPS position.
+The release extension checks for stable updates when the app enters the foreground and offers a download prompt on the idle map until the release is installed. Downloads remain explicit. APKs must pass checksum, package, version and signing-identity checks before Android's installer opens. Installation is user-confirmed and disabled during navigation. The prepared token-free update channel requires public GitHub Releases. Public documentation screenshots use explicit demonstration coordinates, never the user's GPS position.
 
 Android Auto is disabled and non-exported in the hardened 0.2.1 build pending isolated cross-UID and lifecycle validation. Phone transport modes remain available. Shared links cannot replace active guidance. See docs/security.md.
 
