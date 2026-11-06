@@ -20,6 +20,7 @@
 <p align="center">
   <a href="#your-map-your-world">Explore the worlds</a> ·
   <a href="#your-world-on-the-dashboard">Android Auto</a> ·
+  <a href="#ios-port-work-in-progress">iOS port</a> ·
   <a href="#get-waypoint">Install</a> ·
   <a href="#build-from-source">Build</a> ·
   <a href="#privacy-and-services">Privacy</a> ·
@@ -159,6 +160,24 @@ Android Auto keeps Google Maps available in the launcher. Open Waypoint there to
 
 <img src="docs/images/promo/identity.jpg" width="100%" alt="Waypoint's launcher emblem and compact navigation identity." />
 
+## iOS port (work in progress)
+
+An iPhone/iPad port is being developed in [`ios/`](ios/README.md) for iOS 17 or later. The 0.3.0 branch follows Android 2.0.1 with 38 themed phone HUDs, Bicycle routing, saved-place renaming and local Quests. Android feature parity is still being checked, and the remaining device checks are listed in the validation record.
+
+Progress and remaining work are tracked in [issue #12](https://github.com/the-geeky-couldron/waypoint/issues/12).
+
+Unsigned [contribution preview builds](https://github.com/sanskarjaiswal2001/waypoint/releases) are available on the contributor's fork for installation through LiveContainer, SideStore or AltStore Classic. The app's update check and feedback form use the upstream repository; fork previews are separate downloads. Upstream iOS builds use the `ios-v*` release channel. Read the [feature comparison](ios/PARITY.md) and [iOS validation record](ios/VALIDATION.md) for known gaps and tests that have run. The promotional screenshots above show Android.
+
+Navigation was reported working on an iPhone through LiveContainer with the 0.2.0 preview. These device screenshots show selected destinations in Night City and Los Santos; the 0.3.0 changes still need device verification:
+
+<p align="center">
+  <img src="docs/images/ios/night-city-apple-valley.png" width="30%" alt="iOS Night City map with Apple Valley selected and route preview controls." />
+  <img src="docs/images/ios/night-city-destination.png" width="30%" alt="iOS Night City map with a public destination in Ecuador selected." />
+  <img src="docs/images/ios/los-santos-destination.png" width="30%" alt="iOS Los Santos map showing the same destination and route preview controls." />
+</p>
+
+<p><sub>The captures show selected destinations, with no current-location view included. Status-bar items were removed without cropping, and metadata was stripped. <a href="docs/images/ios/README.md">Screenshot notes</a>.</sub></p>
+
 ## Get Waypoint
 
 **[Download Waypoint.apk from GitHub Releases →](https://github.com/the-geeky-couldron/waypoint/releases/latest)**
@@ -175,6 +194,12 @@ Installed versions check for a newer stable GitHub release on foreground entry, 
 The APK is checked against its checksum, package, version and installed signing identity. Waypoint shows What’s New once after a compatible update and keeps saved places and settings. This source tree is **Waypoint 2.5.0**; see the [release notes](docs/releases/current.md) and [changelog](CHANGELOG.md).
 
 ## Build from source
+
+### iOS
+
+The [iOS build guide](ios/README.md#build) covers Xcode/XcodeGen and the user-folder xtool setup used for the preview IPA. Build outputs and signing material stay outside Git.
+
+### Android
 
 You need **JDK 17**, Android **SDK Platform 36** and **Build Tools 35.0.0**. Set `ANDROID_HOME` or put your SDK path in the ignored `local.properties` file.
 

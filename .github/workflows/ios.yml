@@ -1,0 +1,124 @@
+name: iOS
+
+on:
+  push:
+    branches: [main, ios-port]
+    tags: ['ios-v*']
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'scripts/*ios*'
+      - 'app/src/main/assets/**'
+      - 'app/src/main/res/**'
+      - 'app/src/main/java/com/waypoint/app/World.kt'
+      - 'app/src/main/java/com/waypoint/app/WorldTypography.kt'
+      - 'app/src/main/java/com/waypoint/app/WorldVoice*.kt'
+      - 'app/src/main/java/com/waypoint/app/VehicleMarkers.kt'
+      - 'app/src/main/java/com/waypoint/app/Cartography.kt'
+      - 'app/src/main/java/com/waypoint/app/GameHud.kt'
+      - 'docs/licenses/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: macOS build runner
+        type: choice
+        options: [macos-26, macos-15-intel]
+        default: macos-15-intel
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}-${{ inputs.runner || 'macos-15-intel' }}-${{ github.event_name }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  build:
+    name: Test and build unsigned IPA
+    runs-on: ${{ inputs.runner || 'macos-15-intel' }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Select newest installed Xcode
+        run: |
+          xcode_app=$(find /Applications -maxdepth 1 -name 'Xcode_*.app' | sort -V | tail -n 1)
+          test -n "$xcode_app"
+          sudo xcode-select -s "$xcode_app/Contents/Developer"
+          xcodebuild -version
+          swift --version
+      - name: Check repository hygiene
+        run: python3 scripts/check_repo_hygiene.py
+      - name: Test search and routing adapters
+        run: swift test --package-path ios/WaypointKit
+      - name: Check iOS catalogue contract
+        run: python3 -m unittest discover -s scripts -p 'test_ios_*.py'
+      - name: Install project generator
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+        run: brew install xcodegen
+      - name: Build and package device IPA
+        run: bash scripts/build_ios.sh
+      - name: Verify packaged world and font coverage
+        run: python3 scripts/verify_ios_package.py ios/build/release/Waypoint-iOS-unsigned.ipa
+      - name: Save unsigned IPA
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Waypoint-iOS-unsigned
+          path: |
+            ios/build/release/Waypoint-iOS-unsigned.ipa
+            ios/build/release/SHA256SUMS-iOS
+          if-no-files-found: error
+          retention-days: 14
+      - name: Save resolved package versions
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: iOS-package-resolution
+          path: ios/Waypoint.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          if-no-files-found: ignore
+      - name: Test iPhone launch and primary screens
+        run: |
+          simulator_id=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; devices=json.load(sys.stdin)["devices"]; print(next(d["udid"] for runtime in reversed(list(devices.values())) for d in runtime if d["name"].startswith("iPhone")))')
+          xcodebuild test -project ios/Waypoint.xcodeproj -scheme Waypoint \
+            -destination "platform=iOS Simulator,id=$simulator_id" \
+            -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 300 -maximum-test-execution-time-allowance 420 \
+            -derivedDataPath ios/build/DerivedData -resultBundlePath ios/build/UITests.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Save simulator test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: iOS-simulator-tests
+          path: ios/build/UITests.xcresult
+          if-no-files-found: ignore
+
+  release:
+    name: Publish iOS preview
+    if: startsWith(github.ref, 'refs/tags/ios-v') && github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: Waypoint-iOS-unsigned
+          path: release
+      - name: Publish unsigned IPA and checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; keeping the published assets."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" release/Waypoint-iOS-unsigned.ipa release/SHA256SUMS-iOS \
+            --verify-tag --title "Waypoint iOS $RELEASE_TAG" --notes-file ios/RELEASE_NOTES.md --prerelease --latest=false

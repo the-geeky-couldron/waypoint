@@ -1,0 +1,120 @@
+name: Waypoint
+options:
+  deploymentTarget:
+    iOS: '17.0'
+  xcodeVersion: '26.0'
+  createIntermediateGroups: true
+packages:
+  WaypointKit:
+    path: WaypointKit
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution.git
+    exactVersion: 6.26.1
+  Ferrostar:
+    url: https://github.com/stadiamaps/ferrostar.git
+    exactVersion: 0.59.0
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    TARGETED_DEVICE_FAMILY: '1,2'
+    PRODUCT_BUNDLE_IDENTIFIER: org.waypoint.ios
+    MARKETING_VERSION: 0.3.0
+    CURRENT_PROJECT_VERSION: 6
+    CODE_SIGNING_ALLOWED: NO
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targets:
+  Waypoint:
+    type: application
+    platform: iOS
+    sources:
+      - path: Waypoint
+      - path: Generated/Assets.xcassets
+        buildPhase: resources
+      - path: Generated/worlds.json
+        buildPhase: resources
+      - path: Generated/notices.txt
+        buildPhase: resources
+      - path: Generated/styles
+        type: folder
+        buildPhase: resources
+      - path: Generated/ui
+        type: folder
+        buildPhase: resources
+      - path: Generated/fonts
+        type: folder
+        buildPhase: resources
+      - path: Generated/motion
+        type: folder
+        buildPhase: resources
+      - path: Generated/font-names.json
+        buildPhase: resources
+      - path: Generated/glyphs
+        type: folder
+        buildPhase: resources
+      - path: Generated/patterns
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: WaypointKit
+      - package: MapLibre
+        product: MapLibre
+      - package: Ferrostar
+        product: FerrostarCore
+    info:
+      path: Waypoint/Info.plist
+      properties:
+        CFBundleDisplayName: Waypoint
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        CFBundleURLTypes:
+          - CFBundleURLName: org.waypoint.destination
+            CFBundleURLSchemes: [geo, google.navigation]
+        NSLocationWhenInUseUsageDescription: Waypoint uses your location to show your position, preview routes and guide you to a destination.
+        UIBackgroundModes: [location, audio]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UILaunchScreen:
+          UIColorName: ''
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+    settings:
+      base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SUPPORTS_MACCATALYST: NO
+        GENERATE_INFOPLIST_FILE: NO
+  WaypointTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [WaypointTests]
+    dependencies:
+      - target: Waypoint
+      - package: WaypointKit
+      - package: Ferrostar
+        product: FerrostarCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.waypoint.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
+  WaypointUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [WaypointUITests]
+    dependencies:
+      - target: Waypoint
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.waypoint.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Waypoint:
+    build:
+      targets:
+        Waypoint: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets: [WaypointTests, WaypointUITests]
+    archive:
+      config: Release
