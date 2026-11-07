@@ -13,6 +13,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -66,6 +71,17 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
     val focusCameraHoldUntil=remember{longArrayOf(0L)}
     val styleEpoch=remember{intArrayOf(0)}
     val renderLifecycle=remember(mapView){MapRenderLifecycle(mapView)}
+    var modelBitmap by remember(state.cursorModel) { mutableStateOf<Bitmap?>(null) }
+    var modelFailed by remember(state.cursorModel) { mutableStateOf(false) }
+    var modelTilt by remember { mutableFloatStateOf(45f) }
+    val showModel=active && cameraZoomOverride==null && state.cursorModelEnabled &&
+        state.cursorModel!=null && state.fix!=null && state.headingReliable && !modelFailed
+    val useModel=showModel && modelBitmap!=null
+    val currentUseModel by rememberUpdatedState(useModel)
+    DisposableEffect(modelBitmap) {
+        val bitmap=modelBitmap
+        onDispose { bitmap?.recycle() }
+    }
     DisposableEffect(mapView,owner) {
         val observer=LifecycleEventObserver { _,_ -> renderLifecycle.update(owner.lifecycle.currentState,currentActive) }
         owner.lifecycle.addObserver(observer)
@@ -109,6 +125,7 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
         syncGlobeRotation()
         onDispose { owner.lifecycle.removeObserver(observer);globeAnimator[0]?.cancel();globeAnimator[0]=null }
     }
+    Box(modifier) {
     AndroidView(factory={mapView.apply {
         addOnDidFailLoadingMapListener { currentError("Map couldn't load. Check your internet connection.") }
         getMapAsync { m ->
@@ -117,7 +134,10 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
                 setAllGesturesEnabled(true)
             }
             m.cameraPosition=CameraPosition.Builder().target((cameraCenterOverride ?: PreviewCenter).latLng()).zoom(cameraZoomOverride ?: 15.2).tilt(mapCameraTilt(currentState.world,currentState.tilted,currentState.navigating,cameraTiltOverride)).bearing(-22.0).build()
-            m.addOnCameraMoveListener { currentBearing(m.cameraPosition.bearing.toFloat()) }
+            m.addOnCameraMoveListener {
+                currentBearing(m.cameraPosition.bearing.toFloat())
+                if(currentState.cursorModelEnabled)modelTilt=m.cameraPosition.tilt.toFloat()
+            }
             m.addOnCameraMoveStartedListener { reason -> if(reason==MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
                 focusCameraHoldUntil[0]=0L;cameraGate.userMovedCamera();followPolicy.gestureStarted(SystemClock.elapsedRealtime());followTick++
             } }
@@ -152,7 +172,26 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
                 } else false
             }
         }
-    }},modifier=modifier,update={it.visibility=if(active)android.view.View.VISIBLE else android.view.View.INVISIBLE})
+    }},modifier=Modifier.fillMaxSize(),update={it.visibility=if(active)android.view.View.VISIBLE else android.view.View.INVISIBLE})
+    if(showModel)key(state.cursorModel) {
+        // MapLibre owns the visible cursor so it cannot drift from the streets during gestures.
+        CursorModelView(requireNotNull(state.cursorModel),Modifier.size(128.dp).graphicsLayer { alpha=0f },
+            tilt=modelTilt,onSnapshot={bitmap ->
+                bitmap.density=context.resources.displayMetrics.densityDpi
+                modelBitmap=bitmap
+            },onError={message -> modelFailed=true;currentError(message)})
+    }
+    }
+    LaunchedEffect(map,styleReady,useModel,modelBitmap,state.mode,state.headingReliable) {
+        if(styleReady==0)return@LaunchedEffect
+        val style=map?.style ?: return@LaunchedEffect
+        if(useModel)style.addImage("cursor-model",requireNotNull(modelBitmap))
+        style.getLayerAs<SymbolLayer>("position-arrow")?.setProperties(
+            iconImage(if(useModel)"cursor-model" else playerMarkerImage(state.mode,state.headingReliable)),
+            iconSize(playerIconSize(if(useModel)1f else .55f)),
+            iconPitchAlignment(if(!useModel && state.mode==TravelMode.WALK)Property.ICON_PITCH_ALIGNMENT_MAP
+                else Property.ICON_PITCH_ALIGNMENT_VIEWPORT))
+    }
     LaunchedEffect(map,state.world,active,requestedStyleFile,mapNight) {
         val m=map ?: return@LaunchedEffect
         if(!active || styleReady>0 && loadedStyleFile==requestedStyleFile)return@LaunchedEffect
@@ -315,8 +354,9 @@ fun WorldMap(state: NavState, onPin: (Place)->Unit, onMapError: (String?)->Unit,
         val course=state.navigating && state.headingSource.isTravelDirection
         val heading=if(state.headingReliable)state.bearing else renderedBearing[0]
         motion.update(state.fix,heading,SystemClock.elapsedRealtime(),course,ValueAnimator.areAnimatorsEnabled())
-        layer.setProperties(iconImage(playerMarkerImage(state.mode,state.headingReliable)),
-            iconPitchAlignment(if(state.mode==TravelMode.WALK)Property.ICON_PITCH_ALIGNMENT_MAP
+        layer.setProperties(iconImage(if(currentUseModel)"cursor-model" else playerMarkerImage(state.mode,state.headingReliable)),
+            iconSize(playerIconSize(if(currentUseModel)1f else .55f)),
+            iconPitchAlignment(if(!currentUseModel && state.mode==TravelMode.WALK)Property.ICON_PITCH_ALIGNMENT_MAP
                 else Property.ICON_PITCH_ALIGNMENT_VIEWPORT))
         val epoch=styleEpoch[0]
         // Sensor/accuracy emissions cannot reset the accepted fix's timeline.
