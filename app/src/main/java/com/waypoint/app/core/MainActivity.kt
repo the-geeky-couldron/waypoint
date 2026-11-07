@@ -469,6 +469,7 @@ fun WaypointApp(controller: NavigationController,state: NavState,destinationLaun
                 SettingRow("World voice style","Give each world its own spoken wording and delivery on your device's speech voice. Turn it off for standard instructions.",state.gameVoice,controller::toggleGameVoice)
                 SettingRow("Miles & feet","Use imperial distances",state.imperial,controller::toggleUnits)
                 SettingRow("3D perspective","Tilt the map in every world",state.tilted,controller::toggleTilt)
+                CursorModelSettings(state,controller)
                 HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                 Text("Map controls", style=MaterialTheme.typography.titleMedium)
                 Text("These presets affect controls floating over the phone map.",
