@@ -167,6 +167,35 @@ Installed versions check for a newer stable GitHub release on foreground entry, 
 
 The APK is checked against its checksum, package, version and installed signing identity. Waypoint shows What’s New once after a compatible update and keeps saved places and settings. This source tree is **Waypoint 2.6.0**; see the [release notes](docs/releases/current.md) and [changelog](CHANGELOG.md).
 
+## Bundled 3D position cursors
+
+Add models directly to `app/src/main/assets/cursor-models/`. Every `.glb` file inside this directory is automatically
+listed in **Settings > 3D position cursor**, sorted by file name. Names hide the extension: `Minecart.glb` appears as **Minecart**,
+with an automatically rotating 3D preview on the right. Choose **Use this model**
+to apply it, or turn the switch off to restore the normal cursor.
+
+The selected file name and enabled state survive restarts. A missing model after
+an update restores the standard cursor. Waypoint ships no model: the directory
+only holds `.gitkeep`, and with it empty the setting shows "No 3D models are
+included in this version." Only add models you created or that carry a licence
+compatible with this repository, with no third-party game or brand IP, and
+credit their source here.
+
+**Recommended format: GLB (binary glTF 2.0)** with geometry and PNG/JPEG textures
+embedded in one file. It avoids external resource lookups and runtime conversion
+from `.blend`, `.fbx` or `.obj`. Models must be self-contained and at most **10 MB**;
+for a small cursor, aim for **under 1 MB**, roughly 1,000-5,000 triangles, few
+materials and 256-512 px textures. Export with **Y up, front toward -Z**. Models
+are centred and scaled automatically; animations are not played.
+
+The phone map uses a transparent image rendered from the model with ambient and
+directional lighting, anchored by its bottom centre to GPS. MapLibre renders the
+image together with the streets to avoid drift during fast gestures. The image is
+re-rendered offscreen only after a camera tilt change settles (5° steps); the
+renderer is then removed. Native marker rotation follows heading. The Settings preview
+remains live 3D. Android Auto and uncertain-heading markers keep their standard
+appearance.
+
 ## Build from source
 
 You need **JDK 17**, Android **SDK Platform 37.0** and **Build Tools 36.0.0**. Set `ANDROID_HOME` or put your SDK path in the ignored `local.properties` file.
