@@ -90,7 +90,7 @@ dependencies {
     testImplementation("org.json:json:20260814")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.4.1")
     androidTestImplementation("androidx.car.app:app-testing:1.9.0-alpha03") {
         // Robolectric belongs to local JVM tests. On a device it causes
         // ActivityScenario to select ShadowLooper without a sandbox.
