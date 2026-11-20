@@ -80,9 +80,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     // The default 13.x artifact uses Vulkan; OpenGL ES keeps older devices supported.
     implementation("org.maplibre.gl:android-sdk-opengl:13.7.1")
-    implementation("com.google.android.filament:filament-android:1.56.0")
-    implementation("com.google.android.filament:gltfio-android:1.56.0")
-    implementation("com.google.android.filament:filament-utils-android:1.56.0")
+    implementation("com.google.android.filament:filament-android:1.80.1")
+    implementation("com.google.android.filament:gltfio-android:1.80.1")
+    implementation("com.google.android.filament:filament-utils-android:1.80.1")
     implementation("com.stadiamaps.ferrostar:core:0.59.0")
     implementation("com.squareup.okhttp3:okhttp:5.5.1")
     implementation("com.google.android.gms:play-services-location:21.4.0")
@@ -93,7 +93,7 @@ dependencies {
     testImplementation("org.json:json:20260814")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.4.1")
     androidTestImplementation("androidx.car.app:app-testing:1.9.0-alpha03") {
         // Robolectric belongs to local JVM tests. On a device it causes
         // ActivityScenario to select ShadowLooper without a sandbox.
