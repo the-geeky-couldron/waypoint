@@ -9,18 +9,18 @@
   },
   "private": true,
   "dependencies": {
-    "@remotion/cli": "4.0.540",
-    "@remotion/transitions": "4.0.540",
+    "@remotion/cli": "4.0.545",
+    "@remotion/transitions": "4.0.545",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "remotion": "4.0.540"
+    "remotion": "4.0.545"
   },
   "devDependencies": {
-    "@remotion/eslint-config-flat": "4.0.540",
+    "@remotion/eslint-config-flat": "4.0.545",
     "@types/react": "19.3.0",
-    "@types/web": "0.0.359",
-    "eslint": "10.14.0",
-    "prettier": "3.9.10",
+    "@types/web": "0.0.367",
+    "eslint": "10.15.0",
+    "prettier": "3.10.1",
     "typescript": "6.0.3"
   },
   "overrides": {
